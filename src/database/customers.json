@@ -1,0 +1,26 @@
+[
+  {
+    "phoneNumber": "+91 9999988888",
+    "name": "Aarav Mehta"
+  },
+  {
+    "phoneNumber": "+91 9876543210",
+    "name": "Karan Johar"
+  },
+  {
+    "phoneNumber": "12345678",
+    "name": "Test Traveler"
+  },
+  {
+    "phoneNumber": "99999999",
+    "name": "Vijay Kumar"
+  },
+  {
+    "phoneNumber": "98765432",
+    "name": "Rohan Sharma"
+  },
+  {
+    "phoneNumber": "88888888",
+    "name": "Aditya Rao"
+  }
+]
