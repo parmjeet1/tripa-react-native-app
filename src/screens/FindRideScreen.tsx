@@ -1,559 +1,635 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  FlatList,
-  Modal,
-  Linking,
-  SafeAreaView,
-  Pressable,
-  Keyboard,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Clipboard from 'expo-clipboard';
-import { useIsFocused } from '@react-navigation/native';
-import { dbService } from '../services/db';
-import { travelerService } from '../services/traveler';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, FlatList, StyleSheet, RefreshControl, Linking, TouchableOpacity, Image, Alert, Platform, ActivityIndicator, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { ridesApi } from '../services/api';
 import { Ride } from '../types';
-import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { RideCard } from '../components/RideCard';
 import { Toast } from '../components/Toast';
 import { LocationAutocomplete } from '../components/LocationAutocomplete';
-import { Phone, Copy, Car, Calendar, User, X, Briefcase } from 'lucide-react-native';
-
-const TRAVELER_LOCATION_KEY = '@traveler_current_location';
-
-const formatTravelDate = (dateStr: string) => {
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return dateStr;
-  }
-};
+import { DateTimePickerWrapper } from '../components/DateTimePickerWrapper';
+import { QuickRegisterModal } from '../components/QuickRegisterModal';
+import { Search, ArrowDownUp, SlidersHorizontal, LogOut, X } from 'lucide-react-native';
+import { COLORS, RADIUS, FONT_SIZE, SHADOW } from '../constants/theme';
+import { useAuth } from '../services/auth';
+import * as Location from 'expo-location';
 
 export const FindRideScreen: React.FC = () => {
-  const isFocused = useIsFocused();
+  const { isLoggedIn, user, logout } = useAuth();
 
-  // Search Inputs
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
-
-  // Results & Feeds State
-  const [allRides, setAllRides] = useState<Ride[]>([]);
   const [rides, setRides] = useState<Ride[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState('All');
-  const [uniqueLocations, setUniqueLocations] = useState<string[]>(['All']);
-  const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [userLat, setUserLat] = useState<number | undefined>();
+  const [userLng, setUserLng] = useState<number | undefined>();
+  const [notifyText, setNotifyText] = useState('');
+  const notifyOpacity = useRef(new Animated.Value(0)).current;
+  const [selectedRideType, setSelectedRideType] = useState<'all' | 'sharing' | 'personal'>('all');
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Traveler Profile State
-  const [travelerPhone, setTravelerPhone] = useState('');
-  const [tempTravelerPhone, setTempTravelerPhone] = useState('');
-  const [tempTravelerName, setTempTravelerName] = useState('');
-  const [isNewCustomer, setIsNewCustomer] = useState(false);
-  const [phoneModalVisible, setPhoneModalVisible] = useState(false);
-  const [activeDriverPhone, setActiveDriverPhone] = useState('');
+  // Active Input State (for dynamic zIndex stacking context)
+  const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
 
-  // UI Toast State
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  // Quick Register Modal State
+  const [showRegister, setShowRegister] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState('');
+  const [pendingRideId, setPendingRideId] = useState('');
 
-  // Load traveler phone and active rides when screen comes into focus
-  useEffect(() => {
-    if (isFocused) {
-      loadAllRides();
-    }
-  }, [isFocused]);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as any });
 
-  const loadAllRides = async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch rides (will seed mock rides automatically if storage is empty)
-      const data = await dbService.getRides();
-      setAllRides(data);
-
-      // 2. Extract unique start locations (case-insensitive deduplication, but preserve casing)
-      const startLocMap = new Map<string, string>();
-      data.forEach((r) => {
-        const trimmed = r.fromLocation.trim();
-        if (trimmed) {
-          const lower = trimmed.toLowerCase();
-          if (!startLocMap.has(lower)) {
-            startLocMap.set(lower, trimmed);
-          }
-        }
-      });
-      const extractedLocs = ['All', ...Array.from(startLocMap.values())];
-      setUniqueLocations(extractedLocs);
-
-      // 3. Load saved location preference
-      const savedLocation = await AsyncStorage.getItem(TRAVELER_LOCATION_KEY);
-      if (savedLocation && extractedLocs.includes(savedLocation)) {
-        setSelectedLocation(savedLocation);
-      } else {
-        setSelectedLocation('All');
-      }
-
-      // 4. Load saved phone from traveler profile JSON
-      const profile = await travelerService.getProfile();
-      if (profile && profile.phoneNumber) {
-        setTravelerPhone(profile.phoneNumber);
-      }
-    } catch (error) {
-      console.error('Error loading rides:', error);
-      setToastType('error');
-      setToastMessage('Failed to fetch active rides.');
-      setToastVisible(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    Keyboard.dismiss();
-    setLoading(true);
-    try {
-      const results = await dbService.findRides(fromLocation, toLocation);
-      setRides(results);
-      setHasSearched(true);
-    } catch (error) {
-      console.error(error);
-      setToastType('error');
-      setToastMessage('Failed to find rides. Please try again.');
-      setToastVisible(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectLocation = async (location: string) => {
-    setSelectedLocation(location);
-    setHasSearched(false);
-    try {
-      await AsyncStorage.setItem(TRAVELER_LOCATION_KEY, location);
-    } catch (error) {
-      console.error('Error saving traveler location:', error);
-    }
-  };
-
-  const handleClearSearch = () => {
-    setFromLocation('');
-    setToLocation('');
-    setHasSearched(false);
-  };
-
-  const displayedRides = hasSearched
-    ? rides
-    : selectedLocation === 'All'
-    ? allRides
-    : allRides.filter(
-        (r) => r.fromLocation.trim().toLowerCase() === selectedLocation.trim().toLowerCase()
-      );
-
-  const handleCopyNumber = async (num: string) => {
-    await Clipboard.setStringAsync(num);
-    setToastType('success');
-    setToastMessage(`Copied: ${num}`);
-    setToastVisible(true);
-  };
-
-  const handleCallPress = async (driverPhone: string) => {
-    setActiveDriverPhone(driverPhone);
-    setIsNewCustomer(false);
-    setTempTravelerName('');
-    try {
-      // First, directly check the JSON database storage
-      const profile = await travelerService.getProfile();
-      if (profile && profile.phoneNumber) {
-        setTravelerPhone(profile.phoneNumber);
-        makeCall(driverPhone);
-      } else {
-        setTempTravelerPhone('');
-        setPhoneModalVisible(true);
-      }
-    } catch (error) {
-      console.error('Error checking traveler profile on call:', error);
-      setTempTravelerPhone('');
-      setPhoneModalVisible(true);
-    }
-  };
-
-  const makeCall = (driverPhone: string) => {
-    const cleanPhone = driverPhone.replace(/\s+/g, '');
-    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
-      setToastType('error');
-      setToastMessage('Could not launch dialer. Please try copying the number.');
-      setToastVisible(true);
-    });
-  };
-
-  const handleSaveTravelerPhone = async () => {
-    const cleanedPhone = tempTravelerPhone.trim();
-    if (!cleanedPhone || cleanedPhone.length < 8) {
-      alert('Please enter a valid phone number (minimum 8 digits).');
-      return;
-    }
-
-    if (!isNewCustomer) {
-      // 1. Check if customer is registered in our JSON database registry (await async check)
-      const isRegistered = await travelerService.isRegistered(cleanedPhone);
-      if (isRegistered) {
-        try {
-          await travelerService.saveProfile(cleanedPhone);
-          setTravelerPhone(cleanedPhone);
-          setPhoneModalVisible(false);
-          makeCall(activeDriverPhone);
-        } catch (error) {
-          console.error('Error saving traveler phone:', error);
-          alert('Something went wrong. Please try again.');
-        }
-      } else {
-        // Not registered - transition modal to show registration form (Name Input)
-        setIsNewCustomer(true);
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to log out?')) {
+        logout();
       }
     } else {
-      // 2. Register the new customer dynamically
-      const cleanedName = tempTravelerName.trim();
-      if (!cleanedName) {
-        alert('Please enter your name to register.');
-        return;
-      }
-
-      try {
-        // Save to local registered customers directory
-        await travelerService.registerCustomer(cleanedPhone, cleanedName);
-        // Save active traveler session profile
-        await travelerService.saveProfile(cleanedPhone);
-        setTravelerPhone(cleanedPhone);
-        setPhoneModalVisible(false);
-        makeCall(activeDriverPhone);
-      } catch (error) {
-        console.error('Error registering new customer:', error);
-        alert('Failed to register customer. Please try again.');
-      }
+      Alert.alert(
+        'Log Out',
+        'Are you sure you want to log out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Log Out', style: 'destructive', onPress: logout },
+        ]
+      );
     }
   };
 
-  // Convert Frequency value to badge text and colors
-  const getFrequencyDetails = (frequency: string) => {
-    switch (frequency) {
-      case 'every_day':
-        return { label: 'Every Day', bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700' };
-      case 'specific_date':
-        return { label: 'Specific Date', bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' };
-      default:
-        return { label: 'Today Only', bg: 'bg-amber-50 border-amber-100', text: 'text-amber-700' };
+  const getLocalDateString = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  };
+
+  const [dateStr, setDateStr] = useState(getLocalDateString());
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Permission to access location was denied');
+        return;
+      }
+      try {
+        let location = await Location.getCurrentPositionAsync({});
+        setUserLat(location.coords.latitude);
+        setUserLng(location.coords.longitude);
+      } catch (error) {
+        console.log('Error fetching location', error);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const passengers = ['Rahul', 'Aman', 'Priya', 'Vikram', 'Sneha', 'Karan', 'Anjali', 'Deepak', 'Neha', 'Rohan'];
+    const destinations = ['Dehradun', 'Joshimath', 'Rishikesh', 'Haridwar', 'Delhi', 'Srinagar', 'Rudraprayag'];
+    const drivers = ['Raj Kumar', 'Satish', 'Amit Singh', 'Vijay', 'Sanjay', 'Ramesh'];
+
+    const showRandomNotification = () => {
+      const p = passengers[Math.floor(Math.random() * passengers.length)];
+      const d = destinations[Math.floor(Math.random() * destinations.length)];
+      const dr = drivers[Math.floor(Math.random() * drivers.length)];
+      
+      setNotifyText(`${p} booked a ride with ${dr} to ${d}`);
+
+      Animated.timing(notifyOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+
+      setTimeout(() => {
+        Animated.timing(notifyOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start(() => {
+          setNotifyText('');
+        });
+      }, 6000);
+    };
+
+    const initialTimeout = setTimeout(showRandomNotification, 8000);
+    const interval = setInterval(showRandomNotification, 32000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const fetchRides = async (isRefresh = false, useCurrentInputs = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const res = await ridesApi.list({
+        fromLocation: useCurrentInputs ? fromLocation : (hasSearched ? fromLocation : undefined),
+        toLocation: useCurrentInputs ? toLocation : (hasSearched ? toLocation : undefined),
+        travelDate: useCurrentInputs ? dateStr : (hasSearched ? dateStr : undefined),
+        userLat,
+        userLng,
+        rideType: selectedRideType !== 'all' ? selectedRideType : undefined,
+        page: 1,
+        limit: 15,
+      });
+
+      if (res.success && res.data) {
+        // Deduplicate rides to prevent showing accidental double-submissions from the same driver
+        const uniqueRides = res.data.filter((ride, index, self) =>
+          index === self.findIndex((r) => (
+            r.phoneNumber === ride.phoneNumber &&
+            r.fromLocation === ride.fromLocation &&
+            r.toLocation === ride.toLocation &&
+            r.travelDate === ride.travelDate &&
+            r.travelTime === ride.travelTime
+          ))
+        );
+        setRides(uniqueRides);
+        setPage(1);
+        if (res.pagination) {
+          setTotalPages(res.pagination.totalPages || 1);
+        } else {
+          setTotalPages(1);
+        }
+      } else {
+        setToast({ visible: true, message: res.message || 'Failed to fetch rides', type: 'error' });
+      }
+    } catch (error) {
+      setToast({ visible: true, message: 'Network error. Check connection.', type: 'error' });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const loadMoreRides = async () => {
+    if (loading || loadingMore || refreshing || page >= totalPages) return;
+
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const res = await ridesApi.list({
+        fromLocation: hasSearched ? fromLocation : undefined,
+        toLocation: hasSearched ? toLocation : undefined,
+        travelDate: hasSearched ? dateStr : undefined,
+        userLat,
+        userLng,
+        rideType: selectedRideType !== 'all' ? selectedRideType : undefined,
+        page: nextPage,
+        limit: 15,
+      });
+
+      if (res.success && res.data) {
+        setRides((prevRides) => {
+          const combined = [...prevRides, ...res.data!];
+          // Deduplicate rides across all loaded pages
+          return combined.filter((ride, index, self) =>
+            index === self.findIndex((r) => (
+              r.phoneNumber === ride.phoneNumber &&
+              r.fromLocation === ride.fromLocation &&
+              r.toLocation === ride.toLocation &&
+              r.travelDate === ride.travelDate &&
+              r.travelTime === ride.travelTime
+            ))
+          );
+        });
+        setPage(nextPage);
+        if (res.pagination) {
+          setTotalPages(res.pagination.totalPages || 1);
+        }
+      }
+    } catch (error) {
+      console.warn('Error fetching next page of rides:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const fetchRidesRef = React.useRef(fetchRides);
+  fetchRidesRef.current = fetchRides;
+
+  useFocusEffect(
+    useCallback(() => {
+      // Fetch on focus without re-triggering on every text input keystroke
+      fetchRidesRef.current();
+    }, []) 
+  );
+
+  useEffect(() => {
+    // Also fetch automatically once the GPS location resolves, if the user hasn't started searching manually
+    if (userLat !== undefined && userLng !== undefined && !hasSearched) {
+      fetchRidesRef.current();
+    }
+  }, [userLat, userLng]);
+
+  useEffect(() => {
+    fetchRides();
+  }, [selectedRideType]);
+
+  const handleSearch = () => {
+    setHasSearched(true);
+    fetchRides(false, true); // explicitly tell it to use current inputs right now!
+  };
+
+  const handleSwap = () => {
+    const temp = fromLocation;
+    setFromLocation(toLocation);
+    setToLocation(temp);
+  };
+
+  const dialPhone = (phoneNumber: string, rideId: string) => {
+    const cleanPhone = phoneNumber.replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
+      setToast({ visible: true, message: 'Could not launch dialer.', type: 'error' });
+    });
+
+    if (rideId) {
+      ridesApi.incrementCallCount(rideId).catch((err) => {
+        console.warn('Failed to increment call count:', err);
+      });
+    }
+  };
+
+  // When Call Driver is pressed: if not logged in, show Quick Register first
+  const handleCallDriver = (phoneNumber: string, rideId: string) => {
+    if (!isLoggedIn) {
+      setPendingPhone(phoneNumber);
+      setPendingRideId(rideId);
+      setShowRegister(true);
+    } else {
+      dialPhone(phoneNumber, rideId);
+    }
+  };
+
+  // After successful quick registration, place the call
+  const handleRegisterSuccess = () => {
+    setShowRegister(false);
+    if (pendingPhone) {
+      dialPhone(pendingPhone, pendingRideId);
+      setPendingPhone('');
+      setPendingRideId('');
+    }
+  };
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      {/* Top Navigation Bar */}
+      <View style={styles.navBar}>
+        <Image
+          source={require('../../assets/tripa_logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+        {isLoggedIn && (
+          <View style={styles.headerUserRow}>
+            {user?.name && (
+              <Text style={styles.headerUsername} numberOfLines={1}>
+                {user.name}
+              </Text>
+            )}
+            <TouchableOpacity style={styles.headerLogoutButton} onPress={handleLogout}>
+              <LogOut size={13} color="#ef4444" style={{ marginRight: 4 }} />
+              <Text style={styles.headerLogoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Search Card */}
+      <View style={styles.searchCard}>
+
+        {/* From Location */}
+        <View style={{ zIndex: activeInput === 'from' ? 30 : 10, elevation: activeInput === 'from' ? 30 : 10 }}>
+          <LocationAutocomplete
+            label=""
+            placeholder="From Location"
+            value={fromLocation}
+            onChangeText={setFromLocation}
+            onFocus={() => setActiveInput('from')}
+            onBlur={() => setActiveInput(null)}
+          />
+        </View>
+
+        {/* Swap Button — floats between From and To */}
+        <View style={[styles.swapRow, { zIndex: 1, elevation: 1 }]}>
+          <View style={styles.dividerLine} />
+          <TouchableOpacity style={styles.swapButton} onPress={handleSwap}>
+            <ArrowDownUp size={15} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* To Location */}
+        <View style={{ zIndex: activeInput === 'to' ? 30 : 9, elevation: activeInput === 'to' ? 30 : 9 }}>
+          <LocationAutocomplete
+            label=""
+            placeholder="To Location"
+            value={toLocation}
+            onChangeText={setToLocation}
+            onFocus={() => setActiveInput('to')}
+            onBlur={() => setActiveInput(null)}
+          />
+        </View>
+
+        {/* Divider */}
+        <View style={styles.sectionDivider} />
+
+        {/* Date */}
+        <DateTimePickerWrapper
+          label=""
+          value={dateStr}
+          onChangeText={setDateStr}
+          mode="date"
+        />
+
+        {/* Search Button */}
+        <Button
+          title="Search Ride"
+          icon={<Search size={18} color={COLORS.white} />}
+          onPress={handleSearch}
+          loading={loading}
+          style={styles.searchButton}
+        />
+      </View>
+
+      {/* List Header */}
+      <View style={styles.listHeaderRow}>
+        <Text style={styles.listTitle}>Available Rides</Text>
+        <TouchableOpacity 
+          style={styles.filterButton} 
+          onPress={() => setShowFilterPanel(!showFilterPanel)}
+        >
+          <Text style={[styles.filterText, selectedRideType !== 'all' && { color: COLORS.primary, fontWeight: '700' }]}>
+            {selectedRideType === 'all' ? 'Filter' : selectedRideType === 'sharing' ? 'Sharing' : 'Personal'}
+          </Text>
+          <SlidersHorizontal size={16} color={selectedRideType !== 'all' ? COLORS.primary : COLORS.primaryDark} />
+        </TouchableOpacity>
+      </View>
+
+      {showFilterPanel && (
+        <View style={styles.filterPanel}>
+          <Text style={styles.filterLabel}>Cab Option:</Text>
+          <View style={styles.filterPillRow}>
+            {([
+              { label: 'All', value: 'all' },
+              { label: 'Sharing', value: 'sharing' },
+              { label: 'Personal', value: 'personal' }
+            ] as const).map((opt) => {
+              const active = selectedRideType === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.filterPill, active && styles.filterPillActive]}
+                  onPress={() => setSelectedRideType(opt.value)}
+                >
+                  <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyTitle}>No Rides Found</Text>
+      <Text style={styles.emptySubtitle}>No active rides match your current criteria.</Text>
+    </View>
+  );
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+      </View>
+    );
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, overflow: 'hidden' }} className="flex-1 bg-white">
+    <SafeAreaView style={styles.safeArea}>
       <FlatList
+        ListHeaderComponent={renderHeader()}
+        data={rides}
         style={{ flex: 1 }}
-        data={displayedRides}
         keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <RideCard ride={item} onCallDriver={handleCallDriver} />}
+        ListEmptyComponent={!loading ? renderEmpty() : null}
+        contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchRides(true)} tintColor={COLORS.primary} />}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMoreRides}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={renderFooter}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingTop: 16,
-          paddingBottom: 80,
-        }}
-        ListHeaderComponent={
-          <View>
-            {/* Header */}
-            <View className="mb-6 mt-2">
-              <Text className="text-3xl font-bold text-slate-900 tracking-tight">
-                Find a Ride
-              </Text>
-              <Text className="text-slate-500 mt-1.5 text-base">
-                Connect with active taxi drivers listed by route.
-              </Text>
-            </View>
-
-            {/* Search Card Container */}
-            <View className="bg-slate-50 border border-slate-200 rounded-3xl p-5 mb-5 shadow-sm" style={{ zIndex: 20 }}>
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <LocationAutocomplete
-                    label="From Location"
-                    placeholder="e.g. Airport T3"
-                    value={fromLocation}
-                    onChangeText={setFromLocation}
-                  />
-                </View>
-                <View className="flex-1">
-                  <LocationAutocomplete
-                    label="To Location"
-                    placeholder="e.g. Connaught Place"
-                    value={toLocation}
-                    onChangeText={setToLocation}
-                  />
-                </View>
-              </View>
-              <Button
-                title="Search Rides"
-                onPress={handleSearch}
-                loading={loading}
-                className="mt-2"
-              />
-            </View>
-
-            {/* Location Hub Selector Pills */}
-            <View className="mb-5">
-              <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                📍 Current Location Hub ({uniqueLocations.length - 1} nearby)
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 20 }}
-                className="flex-row py-1"
-                keyboardShouldPersistTaps="handled"
-              >
-                {uniqueLocations.map((loc) => {
-                  const isSelected = selectedLocation === loc;
-                  return (
-                    <Pressable
-                      key={loc}
-                      onPress={() => handleSelectLocation(loc)}
-                      className={`mr-2.5 px-4.5 py-2.5 rounded-full border ${
-                        isSelected
-                          ? 'bg-amber-500 border-amber-500 shadow-sm'
-                          : 'bg-slate-50 border-slate-200 active:bg-slate-100'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          isSelected ? 'text-slate-900 font-bold' : 'text-slate-600'
-                        }`}
-                      >
-                        {loc === 'All' ? '🌐 All Locations' : loc}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* List Header & Action Row */}
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-lg font-bold text-slate-800">
-                {hasSearched ? 'Search Results' : `Active Rides (${displayedRides.length})`}
-              </Text>
-              {hasSearched && (
-                <Pressable
-                  onPress={handleClearSearch}
-                  className="flex-row items-center bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full active:bg-slate-200"
-                >
-                  <X size={14} color="#475569" className="mr-1" />
-                  <Text className="text-xs font-bold text-slate-600">
-                    Clear Search
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          <View className="flex-grow justify-center items-center py-10 px-4">
-            <View className="bg-slate-50 p-6 rounded-full mb-4">
-              <Car size={32} color="#94A3B8" />
-            </View>
-            <Text className="text-slate-700 font-semibold text-lg text-center">
-              No Active Rides Found
-            </Text>
-            <Text className="text-slate-400 text-sm text-center mt-1 max-w-[260px]">
-              {hasSearched
-                ? 'No drivers match your search criteria. Try a different route.'
-                : `No drivers are currently active starting from "${selectedLocation}".`}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const freq = getFrequencyDetails(item.bookingNeed);
-          return (
-            <View className="bg-white border border-slate-100 shadow-sm rounded-3xl p-5 mb-4">
-              {/* Driver & Price Row */}
-              <View className="flex-row justify-between items-start mb-3">
-                <View className="flex-row items-center flex-1 pr-2">
-                  <View className="bg-slate-100 p-2.5 rounded-full mr-3">
-                    <User size={20} color="#475569" />
-                  </View>
-                  <View>
-                    <Text className="text-lg font-bold text-slate-900" numberOfLines={1}>
-                      {item.driverName}
-                    </Text>
-                    <View className={`border rounded-full px-2.5 py-0.5 mt-1 self-start ${freq.bg}`}>
-                      <Text className={`text-xs font-semibold ${freq.text}`}>
-                        {freq.label}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <View className="items-end">
-                  {item.price ? (
-                    <View className="bg-amber-50 px-3.5 py-2 rounded-2xl flex-row items-center border border-amber-100">
-                      <Text className="text-amber-700 font-bold text-base">
-                        ₹{item.price}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View className="bg-slate-50 px-3 py-2 rounded-2xl border border-slate-100">
-                      <Text className="text-slate-500 font-bold text-xs">
-                        Price N/A
-                      </Text>
-                    </View>
-                  )}
-                  <Text className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-                    {item.priceType === 'negotiable' ? 'Negotiable' : 'Fixed Price'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Route Details */}
-              <View className="border-t border-b border-slate-100 py-3 mb-4">
-                <View className="flex-row justify-between items-center mb-2">
-                  <View className="flex-row items-center flex-1">
-                    <Text className="text-slate-500 text-xs uppercase font-semibold w-12">From</Text>
-                    <Text className="text-slate-800 font-semibold text-sm flex-1" numberOfLines={1}>
-                      {item.fromLocation}
-                    </Text>
-                  </View>
-                </View>
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-row items-center flex-1">
-                    <Text className="text-slate-500 text-xs uppercase font-semibold w-12">To</Text>
-                    <Text className="text-slate-800 font-semibold text-sm flex-1" numberOfLines={1}>
-                      {item.toLocation}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Travel Date & Vehicle */}
-              <View className="flex-row justify-between items-center mb-5 gap-2">
-                <View className="flex-row items-center flex-1">
-                  <Calendar size={15} color="#94A3B8" className="mr-1.5" />
-                  <Text className="text-slate-500 text-xs" numberOfLines={1}>
-                    {formatTravelDate(item.travelDate)}
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <Car size={15} color="#94A3B8" className="mr-1.5" />
-                  <Text className="text-slate-700 text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded-md">
-                    {item.vehicleNumber}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Max Luggage (instead of notes) */}
-              <View className="bg-slate-50 px-4 py-3.5 rounded-2xl mb-4 flex-row items-center border border-slate-100">
-                <Briefcase size={16} color="#F59E0B" className="mr-3" />
-                <Text className="text-slate-600 text-sm font-semibold">
-                  Max Luggage Allowed: <Text className="text-slate-800 font-bold">{item.maxLuggage} kg</Text>
-                </Text>
-              </View>
-
-              {/* Action Buttons */}
-              <View className="mt-2">
-                <Pressable
-                  onPress={() => handleCallPress(item.phoneNumber)}
-                  className="w-full bg-amber-500 py-3.5 rounded-2xl flex-row justify-center items-center active:bg-amber-600"
-                >
-                  <Phone size={16} color="#0F172A" className="mr-2" />
-                  <Text className="text-slate-900 font-bold text-sm">
-                    Call Driver
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        }}
       />
 
-      <Modal
-        visible={phoneModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPhoneModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
-          <Pressable 
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
-            onPress={() => setPhoneModalVisible(false)} 
-          />
-          <View className="bg-white rounded-t-[32px] p-6 pb-10">
-            <View className="w-12 h-1.5 bg-slate-200 rounded-full self-center mb-6" />
-            
-            <Text className="text-2xl font-bold text-slate-900 mb-2">
-              {isNewCustomer ? 'Register Customer' : 'Verification Required'}
-            </Text>
-            <Text className="text-slate-500 mb-6 text-sm">
-              {isNewCustomer 
-                ? 'Please enter your name to register as a new traveler on Tripa.' 
-                : 'Please provide your contact number. This connects you with the taxi driver.'}
-            </Text>
-
-            <Input
-              label="Your Mobile Number"
-              placeholder="e.g. +91 9999988888"
-              value={tempTravelerPhone}
-              onChangeText={setTempTravelerPhone}
-              keyboardType="phone-pad"
-              editable={!isNewCustomer}
-              selectTextOnFocus={!isNewCustomer}
-            />
-
-            {isNewCustomer && (
-              <Input
-                label="Your Name"
-                placeholder="e.g. Aarav Mehta"
-                value={tempTravelerName}
-                onChangeText={setTempTravelerName}
-                autoFocus
-              />
-            )}
-
-            <View className="flex-row gap-3 mt-4">
-              <Pressable
-                onPress={() => setPhoneModalVisible(false)}
-                className="flex-1 bg-slate-100 py-4 rounded-2xl justify-center items-center"
-              >
-                <Text className="text-slate-700 font-semibold text-base">
-                  Cancel
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={handleSaveTravelerPhone}
-                className="flex-1 bg-amber-500 py-4 rounded-2xl justify-center items-center"
-              >
-                <Text className="text-slate-900 font-bold text-base">
-                  {isNewCustomer ? 'Register & Call' : 'Submit'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Toast
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-        onHide={() => setToastVisible(false)}
+      <QuickRegisterModal
+        visible={showRegister}
+        onClose={() => { setShowRegister(false); setPendingPhone(''); }}
+        onSuccess={handleRegisterSuccess}
       />
+
+      {notifyText !== '' && (
+        <Animated.View style={[styles.bookingPopup, { opacity: notifyOpacity }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bookingPopupText}>{notifyText}</Text>
+          </View>
+          <TouchableOpacity onPress={() => {
+            Animated.timing(notifyOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+              setNotifyText('');
+            });
+          }}>
+            <X size={16} color="#94a3b8" />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast({ ...toast, visible: false })} />
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
+  listContent: { padding: 16, paddingBottom: 40 },
+  headerContainer: { marginBottom: 16, zIndex: 10 },
+  navBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  logoImage: {
+    height: 40,
+    width: 140,
+  },
+  headerUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerUsername: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  headerLogoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.sm,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fee2e2',
+  },
+  headerLogoutText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  searchCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#eef2f6',
+    ...SHADOW.sm,
+    zIndex: 10,
+  },
+  swapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+    zIndex: 11,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  swapButton: {
+    backgroundColor: COLORS.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 10,
+    ...SHADOW.sm,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 12,
+  },
+  rowInputs: { flexDirection: 'row', alignItems: 'center' },
+  searchButton: {
+    marginTop: 8,
+    backgroundColor: '#0c6b8a',
+    borderRadius: RADIUS.md,
+  },
+  listHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  listTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  filterButton: { flexDirection: 'row', alignItems: 'center' },
+  filterText: { fontSize: 14, color: COLORS.primaryDark, marginRight: 6, fontWeight: '500' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 40 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
+  emptySubtitle: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookingPopup: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: '#334155',
+    ...SHADOW.md,
+  },
+  bookingPopupText: {
+    color: '#f8fafc',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  bookingPopupSub: {
+    color: '#94a3b8',
+    fontSize: 8,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  filterPanel: {
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: RADIUS.md,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#eef2f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOW.sm,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginRight: 12,
+  },
+  filterPillRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+  },
+  filterPillActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryUltraLight,
+  },
+  filterPillText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  filterPillTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+});

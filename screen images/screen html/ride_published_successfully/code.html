@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ride Published Successfully - RideConnect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        
+        .success-checkmark-animation {
+            animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .confetti-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            pointer-events: none;
+        }
+
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#006481",
+                        "on-primary-container": "#fbfdff",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "secondary-container": "#ade1fe",
+                        "primary-fixed": "#bee9ff",
+                        "surface-container": "#ffffff",
+                        "on-primary-fixed": "#001f2a",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "success": "#22c55e",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-container-high": "#dce9ff",
+                        "surface-variant": "#d3e4fe",
+                        "on-background": "#0b1c30",
+                        "inverse-primary": "#71d2fd",
+                        "error-container": "#ffdad6",
+                        "fixed-badge": "#e0f2fe",
+                        "surface-bright": "#f8f9ff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#004d65",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary-fixed": "#c1e8ff",
+                        "on-surface": "#0b1c30",
+                        "tertiary-fixed": "#ffddb8",
+                        "tertiary": "#825100",
+                        "on-secondary-fixed-variant": "#0f4c64",
+                        "on-surface-variant": "#3e484e",
+                        "surface-tint": "#006685",
+                        "secondary-fixed-dim": "#9acdea",
+                        "outline": "#6e797f",
+                        "on-secondary-fixed": "#001e2b",
+                        "secondary": "#2f647d",
+                        "inverse-surface": "#213145",
+                        "primary-container": "#007ea3",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "background": "#f8f9ff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "tertiary-container": "#a36700",
+                        "on-error": "#ffffff",
+                        "surface": "#f8fafc",
+                        "primary-fixed-dim": "#71d2fd",
+                        "on-tertiary-fixed": "#2a1700",
+                        "negotiable-badge": "#fef3c7",
+                        "surface-container-low": "#eff4ff",
+                        "outline-variant": "#bec8cf",
+                        "surface-dim": "#cbdbf5",
+                        "on-secondary-container": "#30657e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin": "16px",
+                        "gutter": "12px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "base": "8px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "title-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "title-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-margin h-16 bg-surface dark:bg-surface-dim">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim text-headline-md">directions_car</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">RideConnect</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant dark:text-outline hover:bg-surface-container-high p-2 rounded-full transition-colors">notifications</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a friendly driver for a ride-sharing service, set against a clean, blurred urban background. The lighting is soft and natural, reflecting the modern corporate and reliable brand identity of RideConnect. The person is smiling warmly, dressed in business-casual attire, conveying trust and efficiency within the platform's community-driven environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWH45p2PmmBeGuhuhZwM8E7tVanUSfF90jbKfr3YHYcudZbANeDhZd9IgnWxFVTCuoDWID-XpHLnYKCSP-aG__Uux1V1qe3PMw_os8SRpt3ieRdK-5wq4GvALkikdd6u075KwDJMqcGEOdnzznHU8Ar5jCqPTES9AuQ_tgF_85JRdF2nwOgrgzJy896tXoQHhenRAlp7Fc6qcEU3WN9wT18MEzU4HtWrIxFkpDStx8_57s7sP8gXSwGmKFVlMN5msAC7nF9k97nek"/>
+</div>
+</div>
+</header>
+<!-- Main Content (Success Canvas) -->
+<main class="flex-grow flex flex-col items-center justify-center px-container-margin pt-16 pb-16 relative">
+<!-- Interactive Background Element (Subtle Gradient) -->
+<div class="absolute inset-0 z-0 opacity-20 pointer-events-none overflow-hidden">
+<div class="absolute -top-1/4 -right-1/4 w-[500px] h-[500px] bg-primary rounded-full blur-[100px]"></div>
+<div class="absolute -bottom-1/4 -left-1/4 w-[500px] h-[500px] bg-secondary-container rounded-full blur-[100px]"></div>
+</div>
+<div class="z-10 w-full max-w-[400px] flex flex-col items-center text-center space-y-xl">
+<!-- Success Icon & Animation Container -->
+<div class="relative" id="success-visual">
+<div class="w-32 h-32 rounded-full bg-success flex items-center justify-center text-white success-checkmark-animation shadow-lg shadow-success/20">
+<span class="material-symbols-outlined !text-[64px]" style="font-variation-settings: 'wght' 600;">check_circle</span>
+</div>
+<!-- Particle effect placeholder for JS -->
+<div class="absolute inset-0" id="confetti-container"></div>
+</div>
+<!-- Message Block -->
+<div class="space-y-sm">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Ride Published Successfully</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-[320px] mx-auto">
+                    Your trip has been listed. Passengers can now find and request to join your ride.
+                </p>
+</div>
+<!-- Bento-style Metadata Info (Visual Interest) -->
+<div class="grid grid-cols-2 gap-md w-full">
+<div class="bg-surface-container-low p-md rounded-xl flex flex-col items-start gap-xs text-left border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary">event_upcoming</span>
+<p class="font-label-md text-label-md text-outline">Trip Status</p>
+<p class="font-title-md text-title-md text-on-surface">Active</p>
+</div>
+<div class="bg-surface-container-low p-md rounded-xl flex flex-col items-start gap-xs text-left border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary">groups</span>
+<p class="font-label-md text-label-md text-outline">Available Seats</p>
+<p class="font-title-md text-title-md text-on-surface">3 Seats</p>
+</div>
+</div>
+<!-- Primary Buttons Stack -->
+<div class="w-full flex flex-col gap-md">
+<button class="w-full h-14 bg-primary text-on-primary font-title-md text-title-md rounded-xl shadow-md active:scale-95 transition-transform duration-100 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">visibility</span>
+                    View My Ride
+                </button>
+<button class="w-full h-14 bg-surface-container-high text-primary font-title-md text-title-md rounded-xl border border-outline-variant/50 hover:bg-surface-variant active:scale-95 transition-all duration-100 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add_circle</span>
+                    Publish Another Ride
+                </button>
+</div>
+<!-- Secondary Action -->
+<button class="font-label-lg text-label-lg text-primary hover:underline transition-all">
+                Share ride link with friends
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-surface dark:bg-surface-container px-container-margin pb-safe border-t border-outline-variant dark:border-outline shadow-md rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline px-4 py-1 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-label-md">Search Ride</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-4 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+<span class="font-label-md text-label-md">Publish Ride</span>
+</a>
+</nav>
+<!-- Micro-interaction Scripts -->
+<script>
+        // Simple confetti effect on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#006481', '#22c55e', '#ade1fe', '#ffddb8'];
+            
+            for (let i = 0; i < 40; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti-particle';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = '50%';
+                particle.style.top = '50%';
+                particle.style.borderRadius = i % 2 === 0 ? '50%' : '2px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 5 + Math.random() * 15;
+                const tx = Math.cos(angle) * (50 + Math.random() * 150);
+                const ty = Math.sin(angle) * (50 + Math.random() * 150);
+                
+                container.appendChild(particle);
+
+                particle.animate([
+                    { transform: 'translate(-50%, -50%) scale(0)', opacity: 1 },
+                    { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1)`, opacity: 0 }
+                ], {
+                    duration: 1000 + Math.random() * 1000,
+                    easing: 'cubic-bezier(0, .9, .57, 1)',
+                    delay: 200,
+                    fill: 'forwards'
+                });
+            }
+        });
+
+        // Toggle Dark Mode (Optional utility for demo)
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+    </script>
+</body></html>

@@ -1,12 +1,9 @@
 import React, { useRef } from 'react';
 import {
-  Pressable,
-  Text,
-  ActivityIndicator,
-  View,
-  Animated,
-  StyleSheet,
+  Pressable, Text, ActivityIndicator, View,
+  Animated, StyleSheet, ViewStyle, TextStyle,
 } from 'react-native';
+import { COLORS, RADIUS, SHADOW } from '../constants/theme';
 
 interface ButtonProps {
   title: string;
@@ -14,102 +11,72 @@ interface ButtonProps {
   variant?: 'solid' | 'outline' | 'ghost';
   loading?: boolean;
   disabled?: boolean;
-  className?: string;
   icon?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
-  style?: object;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+  fullWidth?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
-  title,
-  onPress,
-  variant = 'solid',
-  loading = false,
-  disabled = false,
-  icon,
-  size = 'md',
-  style,
+  title, onPress, variant = 'solid', loading = false,
+  disabled = false, icon, size = 'md', style, textStyle, fullWidth = true,
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const isDisabled = disabled || loading;
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.96,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
-    }).start();
+    Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: false, speed: 50, bounciness: 4 }).start();
   };
-
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 30,
-      bounciness: 6,
-    }).start();
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: false, speed: 30, bounciness: 6 }).start();
   };
 
   const paddingMap = {
     sm: { paddingVertical: 10, paddingHorizontal: 20 },
-    md: { paddingVertical: 16, paddingHorizontal: 28 },
-    lg: { paddingVertical: 20, paddingHorizontal: 32 },
+    md: { paddingVertical: 15, paddingHorizontal: 24 },
+    lg: { paddingVertical: 18, paddingHorizontal: 28 },
   };
-
-  const fontSizeMap = { sm: 13, md: 16, lg: 18 };
-
-  const solidStyle = isDisabled
-    ? styles.solidDisabled
-    : styles.solid;
-  const outlineStyle = isDisabled
-    ? styles.outlineDisabled
-    : styles.outline;
-  const ghostStyle = isDisabled ? styles.ghostDisabled : styles.ghost;
+  const fontSizeMap = { sm: 13, md: 15, lg: 17 };
 
   const containerStyle =
-    variant === 'solid'
-      ? solidStyle
-      : variant === 'outline'
-      ? outlineStyle
-      : ghostStyle;
+    variant === 'solid' ? (isDisabled ? styles.solidDisabled : styles.solid)
+    : variant === 'outline' ? (isDisabled ? styles.outlineDisabled : styles.outline)
+    : styles.ghost;
 
   const textColor =
-    variant === 'solid'
-      ? isDisabled
-        ? '#7C3AED40'
-        : '#0F172A'
-      : variant === 'outline'
-      ? isDisabled
-        ? '#F59E0B60'
-        : '#D97706'
-      : isDisabled
-      ? '#94A3B8'
-      : '#F59E0B';
+    variant === 'solid' ? COLORS.white
+    : variant === 'outline' ? (isDisabled ? COLORS.primaryMuted : COLORS.primary)
+    : COLORS.primary;
+
+  const flattenedStyle = StyleSheet.flatten(style);
+  const wrapperStyle = { ...flattenedStyle };
+  const customPressableStyle: any = {};
+
+  if (wrapperStyle.backgroundColor) {
+    customPressableStyle.backgroundColor = wrapperStyle.backgroundColor;
+    delete wrapperStyle.backgroundColor;
+  }
+  if (wrapperStyle.borderRadius) {
+    customPressableStyle.borderRadius = wrapperStyle.borderRadius;
+    delete wrapperStyle.borderRadius;
+  }
 
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, fullWidth && { width: '100%' }, wrapperStyle]}>
       <Pressable
         disabled={isDisabled}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[styles.base, containerStyle, paddingMap[size]]}
+        style={[styles.base, containerStyle, paddingMap[size], customPressableStyle, !fullWidth && { width: 'auto' }]}
       >
         {loading ? (
-          <ActivityIndicator
-            color={variant === 'solid' ? '#0F172A' : '#F59E0B'}
-            size="small"
-          />
+          <ActivityIndicator color={variant === 'solid' ? COLORS.white : COLORS.primary} size="small" />
         ) : (
           <View style={styles.innerRow}>
             {icon && <View style={styles.iconWrap}>{icon}</View>}
-            <Text
-              style={[
-                styles.label,
-                { fontSize: fontSizeMap[size], color: textColor },
-              ]}
-            >
+            <Text style={[styles.label, { fontSize: fontSizeMap[size], color: textColor }, textStyle]}>
               {title}
             </Text>
           </View>
@@ -121,48 +88,32 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    width: '100%',
-    borderRadius: 18,
+    borderRadius: RADIUS.xl,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   solid: {
-    backgroundColor: '#F59E0B',
-    // Layered shadow for depth
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
+    backgroundColor: COLORS.primary,
+    ...SHADOW.md,
   },
   solidDisabled: {
-    backgroundColor: '#FDE68A',
-    shadowColor: 'transparent',
+    backgroundColor: COLORS.primaryMuted,
     elevation: 0,
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#F59E0B',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
   },
   outlineDisabled: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#FDE68A',
-    elevation: 0,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryMuted,
   },
   ghost: {
-    backgroundColor: '#FFF7ED',
-  },
-  ghostDisabled: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.primaryUltraLight,
   },
   innerRow: {
     flexDirection: 'row',
@@ -170,9 +121,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  iconWrap: {
-    marginRight: 2,
-  },
+  iconWrap: { marginRight: 2 },
   label: {
     fontWeight: '700',
     letterSpacing: 0.3,

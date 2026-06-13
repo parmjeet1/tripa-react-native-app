@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>RideConnect - Modern Ride Sharing</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#006481",
+                    "on-primary-container": "#fbfdff",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "secondary-container": "#ade1fe",
+                    "primary-fixed": "#bee9ff",
+                    "surface-container": "#ffffff",
+                    "on-primary-fixed": "#001f2a",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "success": "#22c55e",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-variant": "#d3e4fe",
+                    "on-background": "#0b1c30",
+                    "inverse-primary": "#71d2fd",
+                    "error-container": "#ffdad6",
+                    "fixed-badge": "#e0f2fe",
+                    "surface-bright": "#f8f9ff",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed-variant": "#004d65",
+                    "on-tertiary-container": "#fffbff",
+                    "secondary-fixed": "#c1e8ff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-fixed": "#ffddb8",
+                    "tertiary": "#825100",
+                    "on-secondary-fixed-variant": "#0f4c64",
+                    "on-surface-variant": "#3e484e",
+                    "surface-tint": "#006685",
+                    "secondary-fixed-dim": "#9acdea",
+                    "outline": "#6e797f",
+                    "on-secondary-fixed": "#001e2b",
+                    "secondary": "#2f647d",
+                    "inverse-surface": "#213145",
+                    "primary-container": "#007ea3",
+                    "on-primary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "background": "#f8f9ff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary-container": "#a36700",
+                    "on-error": "#ffffff",
+                    "surface": "#f8fafc",
+                    "primary-fixed-dim": "#71d2fd",
+                    "on-tertiary-fixed": "#2a1700",
+                    "negotiable-badge": "#fef3c7",
+                    "surface-container-low": "#eff4ff",
+                    "outline-variant": "#bec8cf",
+                    "surface-dim": "#cbdbf5",
+                    "on-secondary-container": "#30657e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin": "16px",
+                    "gutter": "12px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "base": "8px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "title-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "title-lg": ["Plus Jakarta Sans"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "label-lg": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "title-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .ride-card-shadow {
+            box-shadow: 0px 2px 8px rgba(15, 23, 42, 0.05);
+        }
+        .active-nav-shadow {
+            box-shadow: 0px 4px 12px rgba(15, 23, 42, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary-container">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-margin h-16 bg-surface dark:bg-surface-dim">
+<div class="flex items-center gap-2">
+<img alt="RideConnect Logo" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBX0qQ_zWg_ezacl_3VfVz38ktG5L7HwHetSSsmS_0D3KZfLprc0pLXywAHImWHko1JoafUEGQg8vKzwex-r13_dV_oAeazBPg_RpOUdneoxPxaX1G2YbCYndZpjDvFuwIpKDbDwRNOChIE0kwtDoISodJWDCX4Y7Ev1du3IcBhBN83BH37nOqWi1PuG2qA2THQy_gpshkuR4qMxbRimyvSfQhngrbgLW1m3DibateXheRVFl9D--ct3B0WHzbPP5FUp2q023bHRgs"/>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">RideConnect</h1>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors">account_circle</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-16 pb-20 px-container-margin max-w-[600px] mx-auto min-h-screen">
+<!-- Search Section -->
+<section class="mt-lg">
+<div class="bg-surface-container rounded-xl p-md ride-card-shadow border border-outline-variant/30">
+<div class="space-y-sm">
+<!-- From Input -->
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary">location_on</span>
+<input class="w-full bg-surface-container-low border-outline-variant rounded-lg py-3 pl-11 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-body-md text-on-surface transition-all" placeholder="From Location" type="text"/>
+</div>
+<!-- Vertical Connector Line -->
+<div class="flex justify-center -my-2 relative z-10">
+<div class="bg-primary text-on-primary rounded-full p-1 shadow-sm rotate-90 scale-90">
+<span class="material-symbols-outlined text-[18px]">sync_alt</span>
+</div>
+</div>
+<!-- To Input -->
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">map</span>
+<input class="w-full bg-surface-container-low border-outline-variant rounded-lg py-3 pl-11 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-body-md text-on-surface transition-all" placeholder="To Location" type="text"/>
+</div>
+<!-- Date & Passenger Row -->
+<div class="grid grid-cols-2 gap-sm">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">calendar_today</span>
+<input class="w-full bg-surface-container-low border-outline-variant rounded-lg py-3 pl-10 pr-2 focus:ring-2 focus:ring-primary outline-none font-body-md text-on-surface text-sm" placeholder="Date" type="text"/>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">group</span>
+<input class="w-full bg-surface-container-low border-outline-variant rounded-lg py-3 pl-10 pr-2 focus:ring-2 focus:ring-primary outline-none font-body-md text-on-surface text-sm" placeholder="Seats" type="text"/>
+</div>
+</div>
+</div>
+<!-- Search Button -->
+<button class="w-full mt-lg h-14 bg-primary text-on-primary font-title-md text-title-md rounded-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">search</span>
+                    Search Ride
+                </button>
+</div>
+</section>
+<!-- Available Rides Section -->
+<section class="mt-xl">
+<div class="flex items-center justify-between mb-md">
+<h2 class="font-title-lg text-title-lg text-on-surface">Available Rides</h2>
+<button class="text-primary font-label-lg flex items-center gap-1">
+                    Filter <span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+</div>
+<!-- Ride Cards List -->
+<div class="space-y-md">
+<!-- Card 1 -->
+<div class="bg-surface-container rounded-xl p-md ride-card-shadow border border-outline-variant/20 hover:border-primary/30 transition-colors">
+<div class="flex justify-between items-start mb-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold">
+                                JS
+                            </div>
+<div>
+<p class="font-title-md text-title-md text-on-surface leading-tight">Josh Singh</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<p class="text-label-md text-on-surface-variant">4.8 (124 reviews)</p>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="font-title-lg text-title-lg text-primary">₹850</p>
+<span class="bg-fixed-badge text-primary-fixed-variant px-2 py-0.5 rounded-full font-label-md text-[10px] uppercase tracking-wider">Fixed</span>
+</div>
+</div>
+<div class="flex gap-3 my-md relative">
+<div class="flex flex-col items-center gap-1">
+<div class="w-3 h-3 rounded-full border-2 border-primary"></div>
+<div class="w-0.5 h-10 bg-outline-variant border-dashed border-l"></div>
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+</div>
+<div class="flex flex-col justify-between py-0.5">
+<div>
+<p class="text-label-md text-outline">From</p>
+<p class="font-title-md text-on-surface">Joshimath Main Square</p>
+</div>
+<div>
+<p class="text-label-md text-outline">To</p>
+<p class="font-title-md text-on-surface">Dehradun ISBT</p>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-y-3 mb-lg pt-sm border-t border-outline-variant/10">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">event</span>
+<p class="font-label-md">Jun 11, 2027</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<p class="font-label-md">11:00 AM</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">directions_car</span>
+<p class="font-label-md">UK07-AL-5523</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">luggage</span>
+<p class="font-label-md">Max 2 Bags</p>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-title-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">call</span>
+                        Call Driver
+                    </button>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container rounded-xl p-md ride-card-shadow border border-outline-variant/20 hover:border-primary/30 transition-colors">
+<div class="flex justify-between items-start mb-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-bold">
+                                PA
+                            </div>
+<div>
+<p class="font-title-md text-title-md text-on-surface leading-tight">Priya Agarwal</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<p class="text-label-md text-on-surface-variant">5.0 (42 reviews)</p>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="font-title-lg text-title-lg text-primary">₹1,200</p>
+<span class="bg-negotiable-badge text-tertiary px-2 py-0.5 rounded-full font-label-md text-[10px] uppercase tracking-wider">Negotiable</span>
+</div>
+</div>
+<div class="flex gap-3 my-md relative">
+<div class="flex flex-col items-center gap-1">
+<div class="w-3 h-3 rounded-full border-2 border-primary"></div>
+<div class="w-0.5 h-10 bg-outline-variant border-dashed border-l"></div>
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+</div>
+<div class="flex flex-col justify-between py-0.5">
+<div>
+<p class="text-label-md text-outline">From</p>
+<p class="font-title-md text-on-surface">Rishikesh Ghat</p>
+</div>
+<div>
+<p class="text-label-md text-outline">To</p>
+<p class="font-title-md text-on-surface">Delhi IGI Airport</p>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-y-3 mb-lg pt-sm border-t border-outline-variant/10">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">event</span>
+<p class="font-label-md">Jun 12, 2027</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<p class="font-label-md">08:30 AM</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">directions_car</span>
+<p class="font-label-md">DL-01-CQ-9901</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">luggage</span>
+<p class="font-label-md">Max 1 Bag</p>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-title-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">call</span>
+                        Call Driver
+                    </button>
+</div>
+<!-- Empty state nudge -->
+<div class="py-xl flex flex-col items-center text-center opacity-40">
+<span class="material-symbols-outlined text-[48px] mb-sm">more_horiz</span>
+<p class="font-label-md">That's all for today. Check back later!</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-surface dark:bg-surface-container px-container-margin pb-safe border-t border-outline-variant dark:border-outline shadow-md rounded-t-xl">
+<!-- Search Ride (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-4 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">search</span>
+<span class="font-label-md text-label-md">Search Ride</span>
+</a>
+<!-- Publish Ride (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline px-4 py-1 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="font-label-md text-label-md">Publish Ride</span>
+</a>
+</nav>
+<!-- Floating Action Button (FAB) - For quick access on home -->
+<button class="fixed bottom-20 right-4 w-14 h-14 bg-primary-container text-on-primary-container rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform z-40 md:hidden">
+<span class="material-symbols-outlined text-[32px]">add</span>
+</button>
+<script>
+        // Simple micro-interactions for input fields
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.querySelector('.material-symbols-outlined').style.color = '#006481';
+            });
+            input.addEventListener('blur', () => {
+                if (!input.value) {
+                    input.parentElement.querySelector('.material-symbols-outlined').style.color = '#6e797f';
+                }
+            });
+        });
+
+        // Toggle Active State logic for bottom nav
+        const navItems = document.querySelectorAll('nav a');
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                navItems.forEach(nav => {
+                    nav.className = "flex flex-col items-center justify-center text-on-surface-variant dark:text-outline px-4 py-1 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all active:scale-90";
+                    nav.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0";
+                });
+                item.className = "flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-4 py-1 active:scale-90 transition-all duration-200";
+                item.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
+            });
+        });
+    </script>
+</body></html>

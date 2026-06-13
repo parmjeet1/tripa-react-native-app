@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RideConnect - Route Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .route-line {
+            position: absolute;
+            left: 23px;
+            top: 48px;
+            bottom: 48px;
+            width: 2px;
+            background: repeating-linear-gradient(to bottom, #006481 0, #006481 4px, transparent 4px, transparent 8px);
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#006481",
+                    "on-primary-container": "#fbfdff",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "secondary-container": "#ade1fe",
+                    "primary-fixed": "#bee9ff",
+                    "surface-container": "#ffffff",
+                    "on-primary-fixed": "#001f2a",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "success": "#22c55e",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-variant": "#d3e4fe",
+                    "on-background": "#0b1c30",
+                    "inverse-primary": "#71d2fd",
+                    "error-container": "#ffdad6",
+                    "fixed-badge": "#e0f2fe",
+                    "surface-bright": "#f8f9ff",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed-variant": "#004d65",
+                    "on-tertiary-container": "#fffbff",
+                    "secondary-fixed": "#c1e8ff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-fixed": "#ffddb8",
+                    "tertiary": "#825100",
+                    "on-secondary-fixed-variant": "#0f4c64",
+                    "on-surface-variant": "#3e484e",
+                    "surface-tint": "#006685",
+                    "secondary-fixed-dim": "#9acdea",
+                    "outline": "#6e797f",
+                    "on-secondary-fixed": "#001e2b",
+                    "secondary": "#2f647d",
+                    "inverse-surface": "#213145",
+                    "primary-container": "#007ea3",
+                    "on-primary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "background": "#f8f9ff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary-container": "#a36700",
+                    "on-error": "#ffffff",
+                    "surface": "#f8fafc",
+                    "primary-fixed-dim": "#71d2fd",
+                    "on-tertiary-fixed": "#2a1700",
+                    "negotiable-badge": "#fef3c7",
+                    "surface-container-low": "#eff4ff",
+                    "outline-variant": "#bec8cf",
+                    "surface-dim": "#cbdbf5",
+                    "on-secondary-container": "#30657e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin": "16px",
+                    "gutter": "12px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "base": "8px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "title-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "title-lg": ["Plus Jakarta Sans"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "label-lg": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "title-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-margin h-16 bg-surface dark:bg-surface-dim">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">RideConnect</h1>
+</div>
+<div class="flex items-center">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors active:scale-95 transition-transform duration-100">
+<span class="material-symbols-outlined text-on-surface-variant">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow pt-20 pb-24 px-container-margin max-w-[600px] mx-auto w-full">
+<!-- Progress Indicator -->
+<div class="mb-lg">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-lg text-label-lg text-primary">Step 2 of 3</span>
+<span class="font-label-md text-label-md text-outline">66% Complete</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3 transition-all duration-500 ease-out"></div>
+</div>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-lg">Route Details</h2>
+<!-- Route Form -->
+<div class="relative space-y-md">
+<!-- Map Preview Section (Visual Anchor) -->
+<div class="rounded-xl overflow-hidden shadow-sm h-48 relative mb-lg">
+<img alt="Route Map Preview" class="w-full h-full object-cover" data-location="San Francisco" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_qZz5I3Hl9vsoFYc2HXojw8Jnm5OdQ5FLfMcMclkMSTNTlhSS7OaE8VlxCiKF5ddP2VmiuazaHf1VIP9Tx5qzwjOjO03sbhtA5TVhnz_gO5HgH5NACEaTeup5pVdaomZGWH1AKbG8hc8xFM2hXt7CxGnu2-9RkGL51mLfDB_MPQB39GXbfWl2ZEdQPqh6ZfeN1N1r9w0LK4ay3SBNsGeP3O_5xP2-A0UsDJMLIt6WTB-zxTi2cnfKPXaTuDTnKxfT4qE8voRLacc"/>
+<div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+</div>
+<!-- Input Group -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-sm border border-outline-variant/30 relative">
+<div class="route-line"></div>
+<!-- From Location -->
+<div class="relative mb-lg">
+<label class="block font-label-md text-label-md text-outline mb-xs ml-12">From Location</label>
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-primary-fixed text-primary z-10 shrink-0">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">my_location</span>
+</div>
+<div class="relative flex-grow">
+<input class="w-full h-14 bg-surface-container-low border-none rounded-lg px-md font-body-lg text-body-lg text-on-surface focus:ring-2 focus:ring-primary transition-all" placeholder="Enter starting point" type="text" value="Market Street, San Francisco"/>
+<button class="absolute right-md top-1/2 -translate-y-1/2 text-outline">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- To Location -->
+<div class="relative">
+<label class="block font-label-md text-label-md text-outline mb-xs ml-12">To Location</label>
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-secondary-container text-secondary z-10 shrink-0 border-2 border-surface-container-lowest">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+<div class="relative flex-grow">
+<input class="w-full h-14 bg-surface-container-low border-none rounded-lg px-md font-body-lg text-body-lg text-on-surface focus:ring-2 focus:ring-primary transition-all" placeholder="Enter destination" type="text"/>
+<button class="absolute right-md top-1/2 -translate-y-1/2 text-primary">
+<span class="material-symbols-outlined text-[20px]">map</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Suggestions -->
+<div class="space-y-sm">
+<p class="font-label-lg text-label-lg text-on-surface-variant">Recent Destinations</p>
+<div class="flex flex-wrap gap-sm">
+<button class="px-md py-sm bg-surface-container-high rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95">
+                        Oakland Airport
+                    </button>
+<button class="px-md py-sm bg-surface-container-high rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95">
+                        Stanford University
+                    </button>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="mt-xl flex gap-md items-center">
+<button class="flex-1 h-14 rounded-xl border border-outline text-primary font-title-md text-title-md hover:bg-primary-fixed/20 transition-all active:scale-95">
+                Previous
+            </button>
+<button class="flex-[2] h-14 rounded-xl bg-primary text-on-primary font-title-md text-title-md shadow-md hover:brightness-110 transition-all active:scale-95">
+                Next Step
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-surface dark:bg-surface-container px-container-margin pb-safe border-t border-outline-variant dark:border-outline shadow-md rounded-t-xl">
+<!-- Search Ride Tab -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline px-4 py-1 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined text-[24px]">search</span>
+<span class="font-label-md text-label-md">Search Ride</span>
+</button>
+<!-- Publish Ride Tab (Active) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-4 py-1 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+<span class="font-label-md text-label-md">Publish Ride</span>
+</button>
+</nav>
+<script>
+        // Micro-interactions for form focus
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.parentElement.classList.add('scale-[1.01]');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.parentElement.classList.remove('scale-[1.01]');
+            });
+        });
+    </script>
+</body></html>

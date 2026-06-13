@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
-import { dbService } from '../services/db';
-import { Input } from './Input';
+import { View, Text, Pressable, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { MapPin, ChevronDown } from 'lucide-react-native';
+import { ridesApi } from '../services/api';
+import { COLORS, RADIUS, FONT_SIZE, SHADOW } from '../constants/theme';
 
 interface LocationAutocompleteProps {
   label: string;
@@ -10,183 +10,185 @@ interface LocationAutocompleteProps {
   value: string;
   onChangeText: (value: string) => void;
   error?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
-  label,
-  placeholder,
-  value,
-  onChangeText,
-  error,
+  label, placeholder, value, onChangeText, error, onFocus, onBlur,
 }) => {
-  const [allLocations, setAllLocations] = useState<string[]>([]);
   const [filtered, setFiltered] = useState<string[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load locations on mount
   useEffect(() => {
-    let active = true;
-    const fetchLocs = async () => {
-      try {
-        const locs = await dbService.getLocations();
-        if (active) setAllLocations(locs);
-      } catch (err) {
-        console.error('Failed to load locations:', err);
-      }
-    };
-    fetchLocs();
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (value.length >= 3) {
+      debounceTimer.current = setTimeout(async () => {
+        try {
+          const res = await ridesApi.locations(value);
+          if (res.success && res.data) {
+            setFiltered(res.data.length > 0 ? res.data : [value]);
+            setShowDropdown(true);
+          }
+        } catch (err) {
+          setFiltered([value]);
+        }
+      }, 300);
+    } else {
+      setFiltered([]);
+      setShowDropdown(false);
+    }
+
     return () => {
-      active = false;
-      if (blurTimer.current) clearTimeout(blurTimer.current);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, []);
+  }, [value]);
 
   const handleTextChange = (text: string) => {
     onChangeText(text);
-    const matches = text.trim()
-      ? allLocations.filter((loc) => loc.toLowerCase().includes(text.toLowerCase()))
-      : allLocations;
-    setFiltered(matches);
-    setShowDropdown(true);
+    if (blurTimer.current) clearTimeout(blurTimer.current);
   };
 
   const handleFocus = () => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
-    const matches = value.trim()
-      ? allLocations.filter((loc) => loc.toLowerCase().includes(value.toLowerCase()))
-      : allLocations;
-    setFiltered(matches);
-    setShowDropdown(true);
+    if (value.length >= 3) setShowDropdown(true);
+    if (onFocus) onFocus();
   };
-
+  
   const handleSelect = (selectedLoc: string) => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
     onChangeText(selectedLoc);
     setShowDropdown(false);
+    if (onBlur) onBlur();
   };
 
   const handleBlur = () => {
     blurTimer.current = setTimeout(() => setShowDropdown(false), 200);
+    if (onBlur) onBlur();
   };
 
-  const visibleItems = filtered.slice(0, 6); // cap to 6 so no scroll needed
+  const visibleItems = filtered.slice(0, 5);
 
   return (
-    <View style={{ marginBottom: 16, zIndex: showDropdown ? 999 : 1, position: 'relative' }}>
-      {/* Label */}
-      <Text style={{ color: '#475569', fontWeight: '600', fontSize: 13, marginBottom: 6, marginLeft: 4 }}>
-        {label}
-      </Text>
+    <View style={[styles.container, { zIndex: showDropdown ? 999 : 1, elevation: showDropdown ? 999 : 1 }]}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
 
-      {/* Input row */}
-      <Pressable
-        onPress={handleFocus}
-        style={[
-          {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#F8FAFC',
-            borderWidth: 1.5,
-            borderColor: error ? '#EF4444' : showDropdown ? '#F59E0B' : '#E2E8F0',
-            borderRadius: 16,
-            paddingHorizontal: 14,
-            paddingVertical: 4,
-          },
-        ]}
-      >
-        <MapPin size={16} color={showDropdown ? '#F59E0B' : '#94A3B8'} style={{ marginRight: 8 }} />
-        <View style={{ flex: 1 }}>
-          <Input
-            label=""
-            placeholder={placeholder}
-            value={value}
-            onChangeText={handleTextChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            style={{
-              borderWidth: 0,
-              backgroundColor: 'transparent',
-              paddingHorizontal: 0,
-              paddingVertical: 10,
-              marginBottom: 0,
-            }}
-          />
-        </View>
-        <ChevronDown
-          size={16}
-          color="#94A3B8"
-          style={{ transform: [{ rotate: showDropdown ? '180deg' : '0deg' }] }}
-        />
-      </Pressable>
-
-      {error ? (
-        <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4, fontWeight: '500' }}>
-          {error}
-        </Text>
-      ) : null}
-
-      {/* Dropdown — absolutely positioned, no scroll needed (capped at 6 items) */}
-      {showDropdown && visibleItems.length > 0 && (
+      <View style={{ position: 'relative', zIndex: showDropdown ? 999 : 1, elevation: showDropdown ? 999 : 1 }}>
         <View
-          style={{
-            position: 'absolute',
-            top: label ? 88 : 56,
-            left: 0,
-            right: 0,
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1.5,
-            borderColor: '#E2E8F0',
-            borderRadius: 16,
-            zIndex: 9999,
-            // Shadow
-            shadowColor: '#0F172A',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.12,
-            shadowRadius: 20,
-            elevation: 12,
-            overflow: 'hidden',
-          }}
+          style={[
+            styles.inputContainer,
+            showDropdown && styles.inputActive,
+            error ? styles.inputError : null
+          ]}
         >
-          {visibleItems.map((item, index) => (
-            <Pressable
-              key={item}
-              onPress={() => handleSelect(item)}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 13,
-                backgroundColor: pressed ? '#FFF7ED' : '#FFFFFF',
-                borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
-                borderBottomColor: '#F1F5F9',
-              })}
-            >
-              <MapPin size={15} color="#F59E0B" style={{ marginRight: 10 }} />
-              <Text
-                style={{
-                  color: item === value ? '#F59E0B' : '#334155',
-                  fontSize: 14,
-                  fontWeight: item === value ? '700' : '500',
-                  flex: 1,
-                }}
-              >
-                {item}
-              </Text>
-              {item === value && (
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: '#F59E0B',
-                  }}
-                />
-              )}
-            </Pressable>
-          ))}
+          <MapPin size={18} color={showDropdown ? COLORS.primary : COLORS.textMuted} style={styles.icon} />
+          <View style={{ flex: 1 }}>
+            <TextInput
+              placeholder={placeholder}
+              placeholderTextColor={COLORS.textMuted}
+              value={value}
+              onChangeText={handleTextChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              style={[styles.innerInput, { outlineStyle: 'none' } as any]}
+            />
+          </View>
+          <ChevronDown size={18} color={COLORS.textMuted} style={{ transform: [{ rotate: showDropdown ? '180deg' : '0deg' }] }} />
         </View>
-      )}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {showDropdown && visibleItems.length > 0 && (
+          <View style={styles.dropdown}>
+            {visibleItems.map((item, index) => (
+              <Pressable
+                key={item}
+                onPressIn={() => handleSelect(item)}
+                style={({ pressed }) => [
+                  styles.dropdownItemPressable,
+                  pressed && styles.dropdownItemPressed,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.dropdownItemContainer,
+                    index < visibleItems.length - 1 && styles.dropdownItemBorder
+                  ]}
+                >
+                  <MapPin size={16} color={COLORS.primary} style={styles.itemIcon} />
+                  <Text 
+                    style={[styles.itemText, item === value && styles.itemTextSelected]} 
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item}
+                  </Text>
+                  {item === value && <View style={styles.selectedDot} />}
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: { marginBottom: 16, position: 'relative' },
+  label: { color: COLORS.textSecondary, fontWeight: '600', fontSize: FONT_SIZE.sm, marginBottom: 6, marginLeft: 4 },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f6fbfd',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 16,
+  },
+  inputActive: { borderColor: COLORS.primary, backgroundColor: COLORS.white },
+  inputError: { borderColor: COLORS.error, backgroundColor: '#fef2f2' },
+  icon: { marginRight: 8 },
+  innerInput: { flex: 1, paddingVertical: 14, fontSize: FONT_SIZE.base, color: COLORS.textPrimary },
+  errorText: { color: COLORS.error, fontSize: FONT_SIZE.xs, marginTop: 4, marginLeft: 4, fontWeight: '500' },
+  dropdown: {
+    position: 'absolute',
+    top: 56, // Just below the input container (approx 52px height + 4px gap)
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: RADIUS.lg,
+    elevation: 5,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    zIndex: 999,
+  },
+  dropdownItemPressable: {
+    backgroundColor: COLORS.white,
+    width: '100%',
+  },
+  dropdownItemPressed: { 
+    backgroundColor: COLORS.primaryUltraLight 
+  },
+  dropdownItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dropdownItemBorder: { 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.borderLight 
+  },
+  itemIcon: { marginRight: 12 },
+  itemText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.md, fontWeight: '500', flex: 1 },
+  itemTextSelected: { color: COLORS.primary, fontWeight: '700' },
+  selectedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
+});

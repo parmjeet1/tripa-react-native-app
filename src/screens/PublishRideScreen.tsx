@@ -1,121 +1,90 @@
-import React, { useState, useEffect } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  Pressable,
-} from 'react-native';
-import { dbService } from '../services/db';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { ridesApi } from '../services/api';
 import { Input } from '../components/Input';
-import { Select } from '../components/Select';
 import { Toast } from '../components/Toast';
+import { Button } from '../components/Button';
 import { LocationAutocomplete } from '../components/LocationAutocomplete';
 import { DateTimePickerWrapper } from '../components/DateTimePickerWrapper';
-import { ChevronRight, ChevronLeft, Check } from 'lucide-react-native';
+import { StepProgressBar } from '../components/StepProgressBar';
+import { Select } from '../components/Select';
+
+import { ChevronRight, ChevronLeft, CheckCircle } from 'lucide-react-native';
+import { COLORS, RADIUS, FONT_SIZE, SHADOW } from '../constants/theme';
+import { useAuth } from '../services/auth';
 
 type Step = 1 | 2 | 3;
+type BookingFrequency = 'today_only' | 'every_day' | 'specific_date' | 'week_days';
+
+const BOOKING_OPTIONS: { label: string; value: BookingFrequency }[] = [
+  { label: 'Today Only', value: 'today_only' },
+  { label: 'Every Day', value: 'every_day' },
+  { label: 'Weekdays', value: 'week_days' },
+  { label: 'Specific Date', value: 'specific_date' },
+];
+
+const WEEKDAYS = [
+  { label: 'M', full: 'Monday', value: 'mon' },
+  { label: 'T', full: 'Tuesday', value: 'tue' },
+  { label: 'W', full: 'Wednesday', value: 'wed' },
+  { label: 'T', full: 'Thursday', value: 'thu' },
+  { label: 'F', full: 'Friday', value: 'fri' },
+  { label: 'S', full: 'Saturday', value: 'sat' },
+  { label: 'S', full: 'Sunday', value: 'sun' },
+];
 
 export const PublishRideScreen: React.FC = () => {
-  // Wizard State
+  const { user, register, login } = useAuth();
+  const navigation = useNavigation<any>();
+
   const [currentStep, setCurrentStep] = useState<Step>(1);
 
   // Form State
-  const [driverName, setDriverName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [driverName, setDriverName] = useState(user?.name || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.mobile || '');
+  const [vehicleName, setVehicleName] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
+  const [allowReverse, setAllowReverse] = useState(true);
+  const [bookingNeed, setBookingNeed] = useState<BookingFrequency>('today_only');
+  const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
   const [travelDate, setTravelDate] = useState('');
+  const [travelTime, setTravelTime] = useState('');
   const [price, setPrice] = useState('');
   const [priceType, setPriceType] = useState<'fixed' | 'negotiable'>('fixed');
-  const [maxLuggage, setMaxLuggage] = useState<number>(0);
-  const [bookingNeed, setBookingNeed] = useState<'every_day' | 'today_only' | 'specific_date'>('today_only');
+  const [rideType, setRideType] = useState<'sharing' | 'personal'>('sharing');
 
-  // Allowed database locations (for validation)
-  const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
-
-  // UI State
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as any });
 
-  const bookingOptions = [
-    { label: 'Today Only', value: 'today_only' },
-    { label: 'Every Day', value: 'every_day' },
-    { label: 'Specific Date', value: 'specific_date' },
-  ];
-
-  // Fetch allowed locations on mount
-  useEffect(() => {
-    const loadLocations = async () => {
-      try {
-        const locs = await dbService.getLocations();
-        setAllowedLocations(locs);
-      } catch (err) {
-        console.error('Failed to load locations for validation:', err);
-      }
-    };
-    loadLocations();
-  }, []);
-
-  // Step validation
   const validateStep = (step: Step): boolean => {
-    const newErrors: { [key: string]: string } = {};
-
+    const e: { [key: string]: string } = {};
     if (step === 1) {
-      if (!driverName.trim()) newErrors.driverName = 'Driver Name is required';
-      if (!phoneNumber.trim()) {
-        newErrors.phoneNumber = 'Phone Number is required';
-      } else if (phoneNumber.trim().replace(/\D/g, '').length < 8) {
-        newErrors.phoneNumber = 'Enter a valid phone number (min 8 digits)';
-      }
-      if (!vehicleNumber.trim()) newErrors.vehicleNumber = 'Vehicle Number is required';
+      if (!driverName.trim()) e.driverName = 'Required';
+      if (!phoneNumber.trim()) e.phoneNumber = 'Required';
+      if (!vehicleName.trim()) e.vehicleName = 'Required';
     } else if (step === 2) {
-      if (!fromLocation.trim()) {
-        newErrors.fromLocation = 'From Location is required';
-      } else {
-        const isValid = allowedLocations.some(
-          (loc) => loc.toLowerCase() === fromLocation.trim().toLowerCase()
-        );
-        if (!isValid) {
-          newErrors.fromLocation = 'Please select a location from the suggestions list';
-        }
-      }
-
-      if (!toLocation.trim()) {
-        newErrors.toLocation = 'To Location is required';
-      } else {
-        const isValid = allowedLocations.some(
-          (loc) => loc.toLowerCase() === toLocation.trim().toLowerCase()
-        );
-        if (!isValid) {
-          newErrors.toLocation = 'Please select a location from the suggestions list';
-        }
-      }
+      if (!fromLocation.trim()) e.fromLocation = 'Required';
+      if (!toLocation.trim()) e.toLocation = 'Required';
     } else if (step === 3) {
-      if (!travelDate.trim()) newErrors.travelDate = 'Travel Date & Time is required';
-      if (maxLuggage <= 0) {
-        newErrors.maxLuggage = 'Please specify luggage capacity (minimum 1 kg)';
-      }
+      if (bookingNeed === 'specific_date' && !travelDate) e.travelDate = 'Please select a date';
+      if (bookingNeed === 'week_days' && selectedWeekdays.length === 0) e.weekdays = 'Select at least one day';
+      if (!travelTime) e.travelTime = 'Please enter departure time';
+      if (!price.trim()) e.price = 'Price is required';
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
       setCurrentStep((prev) => (prev + 1) as Step);
       setErrors({});
-    } else {
-      setToastType('error');
-      setToastMessage('Please complete all required fields.');
-      setToastVisible(true);
     }
   };
 
@@ -125,331 +94,466 @@ export const PublishRideScreen: React.FC = () => {
   };
 
   const handlePublish = async () => {
-    if (!validateStep(3)) {
-      setToastType('error');
-      setToastMessage('Please complete all schedule requirements.');
-      setToastVisible(true);
-      return;
-    }
-
+    if (!validateStep(3)) return;
     setLoading(true);
+
     try {
-      await dbService.publishRide({
+      // Auto-register/login the driver if they aren't logged in
+      if (!user) {
+        const pwd = `tripa_${phoneNumber.trim().replace(/\D/g, '')}`;
+        let authRes = await register(driverName.trim(), phoneNumber.trim(), pwd, 'driver');
+        if (!authRes.success && authRes.message?.toLowerCase().includes('already')) {
+          authRes = await login(phoneNumber.trim(), pwd);
+        }
+        if (!authRes.success) {
+          setToast({ visible: true, message: 'Could not auto-login driver. Try logging in manually.', type: 'error' });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Get local date string instead of UTC
+      const getLocalDateString = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().split('T')[0];
+      };
+
+      const res = await ridesApi.create({
         driverName: driverName.trim(),
         phoneNumber: phoneNumber.trim(),
-        vehicleNumber: vehicleNumber.trim().toUpperCase(),
+        vehicleNumber: vehicleNumber.trim() ? vehicleNumber.trim().toUpperCase() : undefined,
+        vehicleName: vehicleName.trim(),
         fromLocation: fromLocation.trim(),
         toLocation: toLocation.trim(),
-        travelDate: travelDate,
-        bookingNeed,
-        price: price.trim() || undefined,
-        priceType,
-        maxLuggage,
+        travelDate: bookingNeed === 'specific_date' ? travelDate : getLocalDateString(),
+        travelTime: travelTime,
+        bookingFrequency: bookingNeed,
+        weekdays: bookingNeed === 'week_days' ? selectedWeekdays : undefined,
+        price: price.trim(),
+        priceMode: priceType,
+        rideType: rideType,
+        maxLuggage: 'medium',
+        allowReverse: allowReverse,
       });
 
-      // Show Success Toast
-      setToastType('success');
-      setToastMessage('Ride published successfully');
-      setToastVisible(true);
-
-      // Reset Wizard & Form
-      setCurrentStep(1);
-      setDriverName('');
-      setPhoneNumber('');
-      setVehicleNumber('');
-      setFromLocation('');
-      setToLocation('');
-      setTravelDate('');
-      setPrice('');
-      setPriceType('fixed');
-      setMaxLuggage(0);
-      setBookingNeed('today_only');
-      setErrors({});
-    } catch (error) {
-      console.error(error);
-      setToastType('error');
-      setToastMessage('Failed to publish ride. Please try again.');
-      setToastVisible(true);
+      if (res.success) {
+        setToast({ visible: true, message: 'Ride published successfully! 🎉', type: 'success' });
+        // Reset form
+        setCurrentStep(1);
+        setVehicleName('');
+        setVehicleNumber('');
+        setFromLocation('');
+        setToLocation('');
+        setAllowReverse(true);
+        setTravelDate('');
+        setTravelTime('');
+        setPrice('');
+        setBookingNeed('today_only');
+        // Navigate to Find Ride tab after short delay so toast is visible
+        setTimeout(() => {
+          navigation.navigate('FindRide');
+        }, 1200);
+      } else {
+        setToast({ visible: true, message: res.message || 'Failed', type: 'error' });
+      }
+    } catch {
+      setToast({ visible: true, message: 'Network error.', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, overflow: 'hidden' }} className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        className="flex-1"
-      >
-        <View style={{ flex: 1 }} className="flex-1">
-          {/* Scrollable Form Content */}
-          <ScrollView
-            style={{ flex: 1 }}
-            className="flex-1 px-6 pt-4"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 120 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Header */}
-            <View className="mb-6 mt-2">
-              <Text className="text-3xl font-bold text-slate-900 tracking-tight">
-                Publish a Ride
-              </Text>
-              <Text className="text-slate-500 mt-1.5 text-base">
-                Connect with travelers in just 3 simple steps.
-              </Text>
-            </View>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
-            {/* Progress Tracker UI */}
-            <View className="flex-row items-center justify-between mb-8 px-2">
-              {/* Step 1 Node */}
-              <View className="items-center flex-1">
-                <View
-                  className={`w-10 h-10 rounded-full flex justify-center items-center ${
-                    currentStep === 1
-                      ? 'bg-amber-500 shadow-md shadow-amber-500/20'
-                      : currentStep > 1
-                      ? 'bg-slate-900'
-                      : 'bg-slate-100 border border-slate-200'
-                  }`}
-                >
-                  {currentStep > 1 ? (
-                    <Check size={18} color="#F59E0B" />
-                  ) : (
-                    <Text className={`font-bold ${currentStep === 1 ? 'text-slate-900' : 'text-slate-400'}`}>1</Text>
-                  )}
-                </View>
-                <Text className={`text-xs font-semibold mt-2 ${currentStep === 1 ? 'text-slate-900' : 'text-slate-400'}`}>
-                  Driver
-                </Text>
-              </View>
+          <View style={styles.header}>
+            <Text style={styles.title}>Publish a Ride</Text>
+            <Text style={styles.subtitle}>Connect with travelers in 3 simple steps.</Text>
+          </View>
 
-              {/* Progress Bar 1 */}
-              <View
-                className={`h-0.5 flex-1 mx-2 -mt-6 ${
-                  currentStep > 1 ? 'bg-slate-900' : 'bg-slate-200'
-                }`}
-              />
+          <StepProgressBar currentStep={currentStep} />
 
-              {/* Step 2 Node */}
-              <View className="items-center flex-1">
-                <View
-                  className={`w-10 h-10 rounded-full flex justify-center items-center ${
-                    currentStep === 2
-                      ? 'bg-amber-500 shadow-md shadow-amber-500/20'
-                      : currentStep > 2
-                      ? 'bg-slate-900'
-                      : 'bg-slate-100 border border-slate-200'
-                  }`}
-                >
-                  {currentStep > 2 ? (
-                    <Check size={18} color="#F59E0B" />
-                  ) : (
-                    <Text className={`font-bold ${currentStep === 2 ? 'text-slate-900' : 'text-slate-400'}`}>2</Text>
-                  )}
-                </View>
-                <Text className={`text-xs font-semibold mt-2 ${currentStep === 2 ? 'text-slate-900' : 'text-slate-400'}`}>
-                  Route
-                </Text>
-              </View>
-
-              {/* Progress Bar 2 */}
-              <View
-                className={`h-0.5 flex-1 mx-2 -mt-6 ${
-                  currentStep > 2 ? 'bg-slate-900' : 'bg-slate-200'
-                }`}
-              />
-
-              {/* Step 3 Node */}
-              <View className="items-center flex-1">
-                <View
-                  className={`w-10 h-10 rounded-full flex justify-center items-center ${
-                    currentStep === 3
-                      ? 'bg-amber-500 shadow-md shadow-amber-500/20'
-                      : 'bg-slate-100 border border-slate-200'
-                  }`}
-                >
-                  <Text className={`font-bold ${currentStep === 3 ? 'text-slate-900' : 'text-slate-400'}`}>3</Text>
-                </View>
-                <Text className={`text-xs font-semibold mt-2 ${currentStep === 3 ? 'text-slate-900' : 'text-slate-400'}`}>
-                  Schedule
-                </Text>
-              </View>
-            </View>
-
-            {/* Step Forms */}
+          <View style={styles.card}>
+            {/* ─── Step 1: Driver Info ─── */}
             {currentStep === 1 && (
               <View>
-                <Text className="text-xl font-bold text-slate-800 mb-4 ml-1">Driver Information</Text>
+                <Text style={styles.stepTitle}>Driver Information</Text>
                 <Input
                   label="Driver Name *"
-                  placeholder="e.g. Rajesh Kumar"
+                  placeholder="e.g. Raj Kumar"
                   value={driverName}
-                  onChangeText={setDriverName}
+                  onChangeText={(t) => { setDriverName(t); if (t.trim()) setErrors(e => ({ ...e, driverName: undefined as any })); }}
                   error={errors.driverName}
-                  autoCapitalize="words"
                 />
-
                 <Input
-                  label="Phone Number *"
+                  label="Mobile Number *"
                   placeholder="e.g. +91 9876543210"
                   value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  error={errors.phoneNumber}
+                  onChangeText={(t) => { setPhoneNumber(t); if (t.trim()) setErrors(e => ({ ...e, phoneNumber: undefined as any })); }}
                   keyboardType="phone-pad"
+                  error={errors.phoneNumber}
                 />
-
                 <Input
-                  label="Vehicle Number *"
-                  placeholder="e.g. DL 1CA 1234"
+                  label="Vehicle Name *"
+                  placeholder="e.g. Swift Dzire / Ertiga"
+                  value={vehicleName}
+                  onChangeText={(t) => { setVehicleName(t); if (t.trim()) setErrors(e => ({ ...e, vehicleName: undefined as any })); }}
+                  error={errors.vehicleName}
+                />
+                <Input
+                  label="Vehicle Number"
+                  placeholder="e.g. DL 1C AA 1234 (Optional)"
                   value={vehicleNumber}
-                  onChangeText={setVehicleNumber}
-                  error={errors.vehicleNumber}
+                  onChangeText={(t) => setVehicleNumber(t)}
                   autoCapitalize="characters"
+                  error={errors.vehicleNumber}
                 />
               </View>
             )}
 
+            {/* ─── Step 2: Route ─── */}
             {currentStep === 2 && (
-              <View>
-                <Text className="text-xl font-bold text-slate-800 mb-4 ml-1">Route Details</Text>
-                <LocationAutocomplete
-                  label="From Location *"
-                  placeholder="Type to search e.g. Airport T3"
-                  value={fromLocation}
-                  onChangeText={setFromLocation}
-                  error={errors.fromLocation}
-                />
-
-                <LocationAutocomplete
-                  label="To Location *"
-                  placeholder="Type to search e.g. Connaught Place"
-                  value={toLocation}
-                  onChangeText={setToLocation}
-                  error={errors.toLocation}
-                />
-              </View>
-            )}
-
-            {currentStep === 3 && (
-              <View>
-                <Text className="text-xl font-bold text-slate-800 mb-4 ml-1">Schedule & Pricing</Text>
-                
-                <DateTimePickerWrapper
-                  label="Travel Date / Time *"
-                  value={travelDate}
-                  onChangeText={setTravelDate}
-                  error={errors.travelDate}
-                />
-
-                <Select
-                  label="Booking Frequency *"
-                  options={bookingOptions}
-                  selectedValue={bookingNeed}
-                  onValueChange={(val) => setBookingNeed(val as any)}
-                  error={errors.bookingNeed}
-                />
-
-                <Input
-                  label="Price (Optional)"
-                  placeholder="e.g. 800"
-                  value={price}
-                  onChangeText={setPrice}
-                  keyboardType="numeric"
-                />
-
-                {/* Fixed vs Negotiable Pricing Option */}
-                <View className="mb-4">
-                  <Text className="text-slate-600 font-semibold text-sm mb-2 ml-1">
-                    Pricing Model *
-                  </Text>
-                  <View className="flex-row bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
-                    <Pressable
-                      onPress={() => setPriceType('fixed')}
-                      className={`flex-1 py-3.5 rounded-xl items-center ${
-                        priceType === 'fixed' ? 'bg-amber-500 shadow-sm shadow-amber-500/10' : 'bg-transparent'
-                      }`}
-                    >
-                      <Text
-                        className={`text-base font-bold ${
-                          priceType === 'fixed' ? 'text-slate-900' : 'text-slate-500'
-                        }`}
-                      >
-                        Fixed Price
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setPriceType('negotiable')}
-                      className={`flex-1 py-3.5 rounded-xl items-center ${
-                        priceType === 'negotiable' ? 'bg-amber-500 shadow-sm shadow-amber-500/10' : 'bg-transparent'
-                      }`}
-                    >
-                      <Text
-                        className={`text-base font-bold ${
-                          priceType === 'negotiable' ? 'text-slate-900' : 'text-slate-500'
-                        }`}
-                      >
-                        Negotiable
-                      </Text>
-                    </Pressable>
-                  </View>
+              <View style={{ zIndex: 10 }}>
+                <Text style={styles.stepTitle}>Route Details</Text>
+                <View style={{ zIndex: activeInput === 'from' ? 20 : 10, elevation: activeInput === 'from' ? 20 : 10 }}>
+                  <LocationAutocomplete
+                    label="From Location *"
+                    placeholder="e.g. Airport T3"
+                    value={fromLocation}
+                    onChangeText={(t) => { setFromLocation(t); if (t.trim()) setErrors(e => ({ ...e, fromLocation: undefined as any })); }}
+                    error={errors.fromLocation}
+                    onFocus={() => setActiveInput('from')}
+                    onBlur={() => setActiveInput(null)}
+                  />
+                </View>
+                <View style={{ zIndex: activeInput === 'to' ? 20 : 9, elevation: activeInput === 'to' ? 20 : 9 }}>
+                  <LocationAutocomplete
+                    label="To Location *"
+                    placeholder="e.g. Connaught Place"
+                    value={toLocation}
+                    onChangeText={(t) => { setToLocation(t); if (t.trim()) setErrors(e => ({ ...e, toLocation: undefined as any })); }}
+                    error={errors.toLocation}
+                    onFocus={() => setActiveInput('to')}
+                    onBlur={() => setActiveInput(null)}
+                  />
                 </View>
 
-                {/* Maximum Luggage Field */}
-                <Input
-                  label="Max Luggage Allowed (kg) *"
-                  placeholder="e.g. 15"
-                  value={maxLuggage > 0 ? maxLuggage.toString() : ''}
-                  onChangeText={(text) => setMaxLuggage(Number(text.replace(/\D/g, '')) || 0)}
-                  keyboardType="numeric"
-                  error={errors.maxLuggage}
-                />
+                {fromLocation !== '' && toLocation !== '' && (
+                  <View style={styles.reverseRouteContainer}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={styles.reverseRouteLabel}>Available for return journey?</Text>
+                      <Text style={styles.reverseRouteSub}>Also show ride for {toLocation} ➔ {fromLocation}</Text>
+                    </View>
+                    <Switch
+                      value={allowReverse}
+                      onValueChange={setAllowReverse}
+                      trackColor={{ false: '#cbd5e1', true: COLORS.primary }}
+                      thumbColor={Platform.OS === 'ios' ? undefined : (allowReverse ? COLORS.white : '#f4f3f4')}
+                    />
+                  </View>
+                )}
               </View>
             )}
-          </ScrollView>
 
-          {/* Bottom Actions Bar */}
-          <View className="border-t border-slate-100 bg-white px-6 py-4 flex-row gap-3">
-            {currentStep > 1 && (
-              <Pressable
-                onPress={handleBack}
-                className="flex-1 border-2 border-slate-200 py-4 rounded-2xl flex-row justify-center items-center active:bg-slate-50"
-              >
-                <ChevronLeft size={20} color="#475569" className="mr-1" />
-                <Text className="text-slate-700 font-semibold text-base">Back</Text>
-              </Pressable>
-            )}
-            
-            {currentStep < 3 ? (
-              <Pressable
-                onPress={handleNext}
-                className="flex-2 bg-slate-900 py-4 rounded-2xl flex-row justify-center items-center active:bg-slate-800"
-              >
-                <Text className="text-amber-500 font-bold text-base mr-1">Next Step</Text>
-                <ChevronRight size={20} color="#F59E0B" />
-              </Pressable>
-            ) : (
-              <Pressable
-                disabled={loading}
-                onPress={handlePublish}
-                className="flex-2 bg-amber-500 py-4 rounded-2xl flex-row justify-center items-center active:bg-amber-600"
-              >
-                <Text className="text-slate-900 font-bold text-base">
-                  {loading ? 'Publishing...' : 'Publish Route'}
+            {/* ─── Step 3: Schedule & Pricing ─── */}
+            {currentStep === 3 && (
+              <View>
+                <Text style={styles.stepTitle}>Schedule & Pricing</Text>
+
+                <View style={{ zIndex: 11 }}>
+                  <Select
+                    label="Ride frequency *"
+                    options={BOOKING_OPTIONS}
+                    selectedValue={bookingNeed}
+                    onValueChange={(val) => {
+                      setBookingNeed(val as BookingFrequency);
+                      setErrors(e => ({ ...e, travelDate: undefined as any }));
+                    }}
+                  />
+                </View>
+
+                {/* Weekdays — shown only when Weekdays selected */}
+                {bookingNeed === 'week_days' && (
+                  <View style={styles.weekdayContainer}>
+                    <Text style={styles.weekdayError}>{errors.weekdays || ''}</Text>
+                    <View style={styles.weekdayRow}>
+                      {WEEKDAYS.map((day) => {
+                        const checked = selectedWeekdays.includes(day.value);
+                        return (
+                          <TouchableOpacity
+                            key={day.value}
+                            style={[styles.dayCircle, checked && styles.dayCircleSelected]}
+                            onPress={() => {
+                              setSelectedWeekdays(prev =>
+                                checked ? prev.filter(d => d !== day.value) : [...prev, day.value]
+                              );
+                              setErrors(e => ({ ...e, weekdays: undefined as any }));
+                            }}
+                          >
+                            <Text style={[styles.dayLabel, checked && styles.dayLabelSelected]}>{day.label}</Text>
+                            <Text style={[styles.dayFull, checked && styles.dayFullSelected]}>{day.full.slice(0,3)}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Specific Date — shown only when Specific Date selected */}
+                {bookingNeed === 'specific_date' && (
+                  <View style={{ marginTop: 8 }}>
+                    <DateTimePickerWrapper
+                      label="Travel Date *"
+                      value={travelDate}
+                      onChangeText={(t) => { setTravelDate(t); if (t) setErrors(e => ({ ...e, travelDate: undefined as any })); }}
+                      error={errors.travelDate}
+                      mode="date"
+                    />
+                  </View>
+                )}
+
+                {/* Departure Time — always shown */}
+                <View style={{ marginTop: bookingNeed !== 'specific_date' ? 12 : 0 }}>
+                  <DateTimePickerWrapper
+                    label="Departure Time *"
+                    value={travelTime}
+                    onChangeText={(t) => { setTravelTime(t); if (t) setErrors(e => ({ ...e, travelTime: undefined as any })); }}
+                    error={errors.travelTime}
+                    mode="time"
+                  />
+                </View>
+
+                {/* Cab Option selection */}
+                <Text style={styles.fieldLabel}>Cab Option *</Text>
+                <View style={styles.cabTypeContainer}>
+                  {(['sharing', 'personal'] as const).map((ct) => (
+                    <TouchableOpacity
+                      key={ct}
+                      style={[styles.cabTypeCard, rideType === ct && styles.cabTypeCardSelected]}
+                      onPress={() => setRideType(ct)}
+                    >
+                      <Text style={[styles.cabTypeCardTitle, rideType === ct && styles.cabTypeCardTitleSelected]}>
+                        {ct === 'sharing' ? 'Sharing Cab' : 'Personal Cab'}
+                      </Text>
+                      <Text style={[styles.cabTypeCardDesc, rideType === ct && styles.cabTypeCardDescSelected]}>
+                        {ct === 'sharing' ? 'Priced per seat (passengers share cab)' : 'Priced for full vehicle (private cab)'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Price — required */}
+                <Text style={styles.fieldLabel}>
+                  {rideType === 'sharing' ? 'Price per seat *' : 'Price for full cab *'}
                 </Text>
-              </Pressable>
+                <View style={styles.priceRow}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Input
+                      label=""
+                      placeholder="e.g. 500"
+                      value={price}
+                      onChangeText={(t) => { setPrice(t); if (t.trim()) setErrors(e => ({ ...e, price: undefined as any })); }}
+                      keyboardType="numeric"
+                      error={errors.price}
+                    />
+                  </View>
+                  {/* Price Type — pill style */}
+                  <View style={styles.priceTypePills}>
+                    {(['fixed', 'negotiable'] as const).map((pt) => (
+                      <TouchableOpacity
+                        key={pt}
+                        style={[styles.smallPill, priceType === pt && styles.smallPillSelected]}
+                        onPress={() => setPriceType(pt)}
+                      >
+                        <Text style={[styles.smallPillText, priceType === pt && styles.smallPillTextSelected]}>
+                          {pt === 'fixed' ? 'Fixed' : 'Negotiable'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
             )}
           </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          {currentStep > 1 && (
+            <Button title="Back" variant="outline" onPress={handleBack} style={{ flex: 1, marginRight: 12 }} icon={<ChevronLeft size={20} color={COLORS.primary} />} />
+          )}
+          {currentStep < 3 ? (
+            <Button title="Next Step" onPress={handleNext} style={{ flex: currentStep > 1 ? 2 : 1 }} icon={<ChevronRight size={20} color={COLORS.white} />} />
+          ) : (
+            <Button title="Publish Ride" onPress={handlePublish} loading={loading} style={{ flex: 2 }} />
+          )}
         </View>
       </KeyboardAvoidingView>
 
-      <Toast
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-        onHide={() => setToastVisible(false)}
-      />
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast({ ...toast, visible: false })} />
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 48 },
+  header: { marginBottom: 24 },
+  title: { fontSize: FONT_SIZE.xxl, fontWeight: '800', color: '#0f172a', marginBottom: 4 },
+  subtitle: { fontSize: FONT_SIZE.md, color: COLORS.textSecondary },
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#eef2f6',
+    ...SHADOW.sm,
+  },
+  stepTitle: { fontSize: FONT_SIZE.lg, fontWeight: '700', color: '#0f172a', marginBottom: 20 },
+  fieldLabel: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 10,
+    marginTop: 4,
+    marginLeft: 2,
+  },
+
+  // Booking frequency pills
+  pillRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  pill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  pillSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+  pillLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    textAlign: 'center',
+  },
+  pillLabelSelected: { color: COLORS.white },
+  pillDesc: { display: 'none' as any },
+  pillDescSelected: { display: 'none' as any },
+
+  // Price row
+  priceRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4 },
+  priceTypePills: { flexDirection: 'column', gap: 6, paddingTop: 4 },
+  smallPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  smallPillSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryUltraLight,
+  },
+  smallPillText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
+  smallPillTextSelected: { color: COLORS.primary },
+
+  // Weekday selector
+  weekdayContainer: { marginBottom: 16 },
+  weekdayError: { fontSize: FONT_SIZE.xs, color: COLORS.error, marginBottom: 6, minHeight: 16 },
+  weekdayRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  dayCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCircleSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+  dayLabel: { fontSize: 13, fontWeight: '700', color: '#334155' },
+  dayLabelSelected: { color: COLORS.white },
+  dayFull: { fontSize: 8, color: '#94a3b8' },
+  dayFullSelected: { color: 'rgba(255,255,255,0.75)' },
+
+  cabTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  cabTypeCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  cabTypeCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryUltraLight,
+  },
+  cabTypeCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  cabTypeCardTitleSelected: {
+    color: COLORS.primary,
+  },
+  cabTypeCardDesc: {
+    fontSize: 10,
+    color: '#64748b',
+    lineHeight: 14,
+  },
+  cabTypeCardDescSelected: {
+    color: COLORS.textSecondary,
+  },
+  reverseRouteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primaryUltraLight,
+    padding: 12,
+    borderRadius: RADIUS.md,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  reverseRouteLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  reverseRouteSub: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    lineHeight: 14,
+  },
+
+  footer: {
+    backgroundColor: COLORS.white,
+    padding: 20,
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#eef2f6',
+  },
+});

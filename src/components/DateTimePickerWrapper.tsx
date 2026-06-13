@@ -1,186 +1,190 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Pressable, Platform, StyleSheet, Modal } from 'react-native';
+// @ts-ignore
+import { createElement } from 'react-native-web';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Calendar, Clock } from 'lucide-react-native';
+import { Calendar, Clock, ChevronDown } from 'lucide-react-native';
+import { COLORS, RADIUS, FONT_SIZE } from '../constants/theme';
 
-interface DateTimePickerWrapperProps {
+interface DateTimePickerProps {
   label: string;
-  value: string; // ISO String or datetime-local format
-  onChangeText: (value: string) => void;
+  value: string;
+  onChangeText: (text: string) => void;
   error?: string;
+  mode?: 'date' | 'time' | 'datetime';
 }
 
-export const DateTimePickerWrapper: React.FC<DateTimePickerWrapperProps> = ({
-  label,
-  value,
-  onChangeText,
-  error,
+export const DateTimePickerWrapper: React.FC<DateTimePickerProps> = ({
+  label, value, onChangeText, error, mode = 'datetime'
 }) => {
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
-  const [tempDate, setTempDate] = useState<Date>(new Date());
+  const [date, setDate] = useState(new Date());
+  const [show, setShow] = useState(false);
+  const [currentMode, setCurrentMode] = useState<'date' | 'time'>('date');
 
-  // Format date for display on native
-  const getDisplayValue = () => {
-    if (!value) return 'Select Date & Time *';
-    try {
-      const d = new Date(value);
-      if (isNaN(d.getTime())) return value;
-      return d.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return value;
-    }
-  };
-
-  const handlePress = () => {
-    const current = value ? new Date(value) : new Date();
-    setTempDate(isNaN(current.getTime()) ? new Date() : current);
-    setPickerMode('date');
-    setShowPicker(true);
-  };
-
-  const handlePickerChange = (event: any, selectedDate?: Date) => {
-    if (event.type === 'dismissed') {
-      setShowPicker(false);
-      return;
-    }
-
-    if (selectedDate) {
-      if (pickerMode === 'date') {
-        const nextDate = new Date(tempDate);
-        nextDate.setFullYear(selectedDate.getFullYear());
-        nextDate.setMonth(selectedDate.getMonth());
-        nextDate.setDate(selectedDate.getDate());
-        setTempDate(nextDate);
-        
-        // Android stability: close date picker before opening time picker
-        if (Platform.OS === 'android') {
-          setShowPicker(false);
-          setPickerMode('time');
-          setTimeout(() => {
-            setShowPicker(true);
-          }, 150);
-        } else {
-          setPickerMode('time');
-        }
-      } else {
-        const finalDate = new Date(tempDate);
-        finalDate.setHours(selectedDate.getHours());
-        finalDate.setMinutes(selectedDate.getMinutes());
-        onChangeText(finalDate.toISOString());
-        setShowPicker(false);
-      }
-    } else {
-      setShowPicker(false);
-    }
-  };
-
-  if (Platform.OS === 'web') {
-    // Standard datetime-local input for Web
-    // Ensure value is in YYYY-MM-DDTHH:MM format for html input
-    let htmlValue = '';
+  useEffect(() => {
     if (value) {
-      try {
-        const d = new Date(value);
-        if (!isNaN(d.getTime())) {
-          // Adjust timezone offset to output local ISO string
-          const tzOffset = d.getTimezoneOffset() * 60000;
-          const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
-          htmlValue = localISOTime;
-        } else {
-          htmlValue = value;
-        }
-      } catch {
-        htmlValue = value;
+      const parsed = new Date(value);
+      if (!isNaN(parsed.getTime())) {
+        setDate(parsed);
       }
     }
+  }, [value]);
 
-    return (
-      <View className="mb-4">
-        <Text className="text-slate-600 font-semibold text-sm mb-1.5 ml-1">
-          {label}
-        </Text>
-        <div style={{ position: 'relative', width: '100%' }}>
-          <input
-            type="datetime-local"
-            value={htmlValue}
-            onChange={(e) => {
-              const selectedVal = e.target.value;
-              if (selectedVal) {
-                onChangeText(new Date(selectedVal).toISOString());
+  const onChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShow(false);
+    
+    if (selectedDate) {
+      setDate(selectedDate);
+      if (mode === 'datetime' && currentMode === 'date' && Platform.OS === 'android') {
+        setCurrentMode('time');
+        setShow(true); // Open time picker after date on Android
+      } else {
+        onChangeText(selectedDate.toISOString());
+      }
+    }
+  };
+
+  const showPicker = () => {
+    setCurrentMode(mode === 'time' ? 'time' : 'date');
+    setShow(true);
+  };
+
+  const displayValue = value ? new Date(value).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: mode !== 'date' ? 'numeric' : undefined,
+    minute: mode !== 'date' ? '2-digit' : undefined,
+    hour12: true
+  }) : '';
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.label}>{label}</Text>
+      
+      {Platform.OS === 'web' ? (
+        <View style={[styles.inputContainer, error && styles.inputError]}>
+          <View style={styles.iconContainer}>
+            {mode === 'time' ? (
+              <Clock size={18} color={value ? COLORS.primary : COLORS.textMuted} />
+            ) : (
+              <Calendar size={18} color={value ? COLORS.primary : COLORS.textMuted} />
+            )}
+          </View>
+          {createElement('input', {
+            type: mode === 'date' ? 'date' : mode === 'time' ? 'time' : 'datetime-local',
+            // For time mode: value is already 'HH:MM'. For date/datetime: convert from ISO.
+            value: (() => {
+              if (!value) return '';
+              if (mode === 'time') return value; // already HH:MM
+              try {
+                const d = new Date(value);
+                if (isNaN(d.getTime())) return '';
+                return d.toISOString().slice(0, mode === 'datetime' ? 16 : 10);
+              } catch { return ''; }
+            })(),
+            onChange: (e: any) => {
+              const v = e.target.value;
+              if (!v) { onChangeText(''); return; }
+              if (mode === 'time') {
+                // Store plain HH:MM, don't parse to ISO
+                onChangeText(v);
               } else {
-                onChangeText('');
+                try {
+                  const newDate = new Date(v);
+                  onChangeText(newDate.toISOString());
+                } catch { onChangeText(v); }
               }
-            }}
-            style={{
-              width: '100%',
-              backgroundColor: '#F8FAFC',
-              borderColor: error ? '#EF4444' : '#E2E8F0',
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderRadius: '16px',
-              padding: '14px 16px',
-              color: '#334155',
-              fontSize: '16px',
-              fontWeight: '600',
+            },
+            style: {
+              flex: 1,
+              border: 'none',
+              background: 'transparent',
+              fontSize: FONT_SIZE.base,
+              color: COLORS.textPrimary,
               outline: 'none',
               fontFamily: 'inherit',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-        {error && (
-          <Text className="text-red-500 text-xs mt-1.5 ml-1.5 font-medium">
-            {error}
-          </Text>
-        )}
-      </View>
-    );
-  }
-
-  // Native pressable selection
-  return (
-    <View className="mb-4">
-      <Text className="text-slate-600 font-semibold text-sm mb-1.5 ml-1">
-        {label}
-      </Text>
-      
-      <Pressable
-        onPress={handlePress}
-        className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 flex-row items-center justify-between active:bg-slate-100 ${
-          error ? 'border-red-500 bg-red-50/10' : 'border-slate-200'
-        }`}
-      >
-        <Text className={`text-base font-semibold ${value ? 'text-slate-800' : 'text-slate-400'}`}>
-          {getDisplayValue()}
-        </Text>
-        <View className="flex-row gap-2">
-          <Calendar size={18} color="#94A3B8" />
-          <Clock size={18} color="#94A3B8" />
+            }
+          })}
         </View>
-      </Pressable>
-
-      {showPicker && (
-        <DateTimePicker
-          value={tempDate}
-          mode={pickerMode}
-          is24Hour={false}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handlePickerChange}
-        />
+      ) : (
+        <Pressable 
+          onPress={showPicker}
+          style={[styles.inputContainer, error && styles.inputError]}
+        >
+          <View style={styles.iconContainer}>
+            {mode === 'time' ? (
+              <Clock size={18} color={displayValue ? COLORS.primary : COLORS.textMuted} />
+            ) : (
+              <Calendar size={18} color={displayValue ? COLORS.primary : COLORS.textMuted} />
+            )}
+          </View>
+          
+          <Text style={[styles.valueText, !displayValue && styles.placeholderText]}>
+            {displayValue || 'Select Date & Time'}
+          </Text>
+          
+          <ChevronDown size={18} color={COLORS.textMuted} />
+        </Pressable>
       )}
 
-      {error && (
-        <Text className="text-red-500 text-xs mt-1.5 ml-1.5 font-medium">
-          {error}
-        </Text>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {show && Platform.OS !== 'web' && (
+        <View>
+          {Platform.OS === 'ios' ? (
+            <Modal transparent animationType="slide">
+              <Pressable style={styles.modalOverlay} onPress={() => setShow(false)}>
+                <Pressable style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Pressable onPress={() => setShow(false)}>
+                      <Text style={styles.modalDone}>Done</Text>
+                    </Pressable>
+                  </View>
+                  <DateTimePicker
+                    value={date}
+                    mode={mode === 'datetime' ? currentMode : mode}
+                    display="spinner"
+                    onChange={onChange}
+                    minimumDate={new Date()}
+                    textColor={COLORS.textPrimary}
+                  />
+                </Pressable>
+              </Pressable>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={date}
+              mode={mode === 'datetime' ? currentMode : mode}
+              display="default"
+              onChange={onChange}
+              minimumDate={new Date()}
+            />
+          )}
+        </View>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: { marginBottom: 16 },
+  label: { color: COLORS.textSecondary, fontWeight: '600', fontSize: FONT_SIZE.sm, marginBottom: 6, marginLeft: 4 },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f6fbfd',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  inputError: { borderColor: COLORS.error, backgroundColor: '#fef2f2' },
+  iconContainer: { marginRight: 10 },
+  valueText: { flex: 1, color: COLORS.textPrimary, fontSize: FONT_SIZE.base },
+  placeholderText: { color: COLORS.textMuted },
+  errorText: { color: COLORS.error, fontSize: FONT_SIZE.xs, marginTop: 4, marginLeft: 4, fontWeight: '500' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalContent: { backgroundColor: COLORS.white, paddingBottom: 20, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg },
+  modalHeader: { padding: 16, alignItems: 'flex-end', borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
+  modalDone: { color: COLORS.primary, fontWeight: 'bold', fontSize: FONT_SIZE.md },
+});
