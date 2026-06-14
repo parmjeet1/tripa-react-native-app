@@ -105,20 +105,33 @@ export const SHADOW = {
 
 import { Platform, NativeModules } from 'react-native';
 import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
 
 const getApiUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_BACKEND_SERVER_BASE_URL
     ? process.env.EXPO_PUBLIC_BACKEND_SERVER_BASE_URL.trim().replace(/\s/g, '')
     : '';
 
+  const configUrl = String(
+    Constants.expoConfig?.extra?.backendServerBaseUrl ||
+    Constants.manifest?.extra?.backendServerBaseUrl ||
+    ''
+  ).trim();
+
+  const rawUrl = envUrl || configUrl;
+
   // localhost/127.0.0.1 on mobile devices will always fail (unreachable).
   // In those cases, we ignore it and use dynamic detection or emulator fallbacks.
-  const isLocalhost = envUrl.includes('localhost') || envUrl.includes('127.0.0.1');
+  const isLocalhost = rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1');
   const isMobile = Platform.OS === 'android' || Platform.OS === 'ios';
 
-  if (envUrl && !(isLocalhost && isMobile)) {
-    console.log(`[Config] Resolved API_BASE_URL from env: "${envUrl}"`);
-    return envUrl;
+  if (rawUrl && !(isLocalhost && isMobile)) {
+    console.log(`[Config] Resolved API_BASE_URL from env/config: "${rawUrl}"`);
+    return rawUrl;
+  }
+
+  if (rawUrl && isLocalhost && isMobile) {
+    console.log('[Config] Ignoring localhost backend URL on mobile, using emulator/device fallback.');
   }
 
   if (Platform.OS === 'web') {

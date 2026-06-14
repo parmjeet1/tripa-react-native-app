@@ -1,4 +1,7 @@
-expo/
+
+android/.gradle/
+.gradle/
+.expo/
 .env
 server.js
 emails.json

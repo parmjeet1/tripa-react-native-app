@@ -25,7 +25,7 @@ export const Navigation = () => {
     return (
       <View style={styles.loadingContainer}>
         <Image
-          source={require('../../assets/tripa_logo.png')}
+          source={require('../../assets/icon.png')}
           style={styles.loadingLogo}
           resizeMode="contain"
         />

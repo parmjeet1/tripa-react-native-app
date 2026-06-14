@@ -286,7 +286,7 @@ export const FindRideScreen: React.FC = () => {
       {/* Top Navigation Bar */}
       <View style={styles.navBar}>
         <Image
-          source={require('../../assets/tripa_logo.png')}
+          source={require('../../assets/icon.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />

@@ -4,7 +4,7 @@
     "slug": "tripa",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/home-icon.png",
+    "icon": "./assets/android/playstore-icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
@@ -13,16 +13,13 @@
     "android": {
       "package": "com.tripa.mobile",
       "versionCode": 1,
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/home-icon.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#2596be",
+        "foregroundImage": "./assets/android/mipmap-xxxhdpi/ic_launcher_foreground.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/android/playstore-icon.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker"
