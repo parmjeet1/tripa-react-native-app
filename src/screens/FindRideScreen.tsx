@@ -98,7 +98,8 @@ export const FindRideScreen: React.FC = () => {
       const d = destinations[Math.floor(Math.random() * destinations.length)];
       const dr = drivers[Math.floor(Math.random() * drivers.length)];
       
-      setNotifyText(`${p} booked a ride with ${dr} to ${d}`);
+      // setNotifyText(`${p} booked a ride with ${dr} to ${d}`);
+      setNotifyText(`Someone booked a ride with ${dr} to ${d}`);
 
       Animated.timing(notifyOpacity, {
         toValue: 1,

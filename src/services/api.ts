@@ -64,7 +64,6 @@ async function apiFetch<T>(
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   const url = `${API_BASE_URL}${endpoint}`;
-  console.log(`[API Fetch] Requesting: ${options.method || 'GET'} ${url}`);
 
   try {
     const response = await fetch(url, {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Modal, View, Text, StyleSheet, Pressable, KeyboardAvoidingView,
-  Platform, ActivityIndicator
+  Platform, ActivityIndicator, ScrollView
 } from 'react-native';
 import { X, Phone, User } from 'lucide-react-native';
 import { Input } from './Input';
@@ -67,7 +67,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.sheet}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={styles.sheet}>
           <Pressable style={styles.sheetContent}>
             {/* Handle */}
             <View style={styles.handle} />
@@ -84,7 +84,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
             </View>
 
             {/* Form */}
-            <View style={styles.form}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
               <Input
                 label="Your Name *"
                 placeholder="e.g. Rahul Sharma"
@@ -117,7 +117,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
               <Text style={styles.disclaimer}>
                 Your info is saved so you only need to do this once.
               </Text>
-            </View>
+            </ScrollView>
           </Pressable>
         </KeyboardAvoidingView>
       </Pressable>
@@ -139,6 +139,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '90%',
     ...SHADOW.lg,
   },
   handle: {
